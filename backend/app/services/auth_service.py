@@ -1,0 +1,61 @@
+from sqlalchemy.orm import Session
+
+from app.database.models import User
+from app.schemas.auth_schema import RegisterRequest
+from app.utils.security import (
+    hash_password,
+    verify_password
+)
+
+
+def register_user(
+    db: Session,
+    user_data: RegisterRequest
+):
+    existing_user = (
+        db.query(User)
+        .filter(User.email == user_data.email)
+        .first()
+    )
+
+    if existing_user:
+        return None
+
+    new_user = User(
+        username=user_data.username,
+        email=user_data.email,
+        password=hash_password(
+            user_data.password
+        ),
+        university=user_data.university,
+        role = 'user'
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+def login_user(
+    db: Session,
+    email: str,
+    password: str
+):
+    user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    if not user:
+        return None
+
+    is_valid = verify_password(
+        password,
+        user.password
+    )
+
+    if not is_valid:
+        return None
+
+    return user
