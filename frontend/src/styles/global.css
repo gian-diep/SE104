@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #F8FFFE;
+    color: #1A2E2B;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F0FAF9;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #99F6E4;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #0D9488;
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(13, 148, 136, 0.2);
+    color: #0F766E;
+  }
+}
+
+@layer components {
+  /* Decorative blob shapes used in hero/backgrounds */
+  .blob-shape {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+
+  /* Soft card style */
+  .card-soft {
+    @apply bg-white rounded-card shadow-card border border-border/60 transition-all duration-300;
+  }
+  .card-soft:hover {
+    @apply shadow-card-hover -translate-y-0.5;
+  }
+
+  /* Tag pill */
+  .tag-pill {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-paragraph font-medium bg-surface text-primary border border-primary/20;
+  }
+
+  /* Badge rounded */
+  .badge-rounded {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-heading font-semibold;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
