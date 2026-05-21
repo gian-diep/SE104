@@ -15,12 +15,13 @@ from typing import Optional
 from app.database.database import get_db
 from app.database.models import User, Listing
 from app.schemas.listing_schema import ListingOut
-
+from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 # ── Helper: chuyển Listing ORM → ListingOut ───────────────────────────────────
 def _to_out(listing) -> ListingOut:
+    """Chuyển ORM object → ListingOut, đọc images từ property."""
     return ListingOut(
         id=listing.id,
         seller_id=listing.seller_id,
@@ -34,7 +35,11 @@ def _to_out(listing) -> ListingOut:
         university=listing.university,
         keywords=listing.keywords,
         status=listing.status,
-        images=listing.images,
+        transaction_status=listing.transaction_status or "available",
+        images=listing.images,   # ← đọc qua property, trả list[str]
+        seller_rating=listing.seller.rating if listing.seller else 0,
+        seller_rating_count=listing.seller.rating_count if listing.seller else 0,
+        reject_reason=listing.reject_reason,
     )
 
 
@@ -145,3 +150,11 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Không thể xóa admin")
     db.delete(user)
     db.commit()
+
+
+@router.get("/listings/{listing_id}", response_model=ListingOut)
+def get_listing(listing_id: int, db: Session = Depends(get_db)):
+    row = listing_service.get_listing_by_id(db, listing_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
+    return _to_out(row)

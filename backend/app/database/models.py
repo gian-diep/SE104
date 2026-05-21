@@ -64,6 +64,7 @@ class Listing(Base):
     university       = Column(NVARCHAR(255), nullable=True)
     keywords         = Column(NVARCHAR(500), nullable=True)
     status               = Column(String(20), default="pending")       # pending | approved | rejected
+    reject_reason = Column(NVARCHAR(500), nullable=True)
     transaction_status   = Column(String(20), default="available")    # available | negotiating | sold
     images_json          = Column(Text, default="[]")                  # ["abc.jpg", "def.png"]
     created_at       = Column(DateTime, server_default=func.now(), nullable=False)

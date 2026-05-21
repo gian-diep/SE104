@@ -34,9 +34,8 @@ class ListingUpdate(BaseModel):
     university: Optional[str] = None
     keywords: Optional[str] = None
     images: Optional[List[str]] = None
-    # available | negotiating | sold
     transaction_status: Optional[str] = None
-
+    status: Optional[str] = None  # ✅ thêm dòng này
 
 class ListingOut(BaseModel):
     id: int
@@ -54,6 +53,7 @@ class ListingOut(BaseModel):
     transaction_status: str = "available"  # available | negotiating | sold
     seller_rating: float = 0
     seller_rating_count: int = 0
+    reject_reason: Optional[str] = None 
 
 
     # ← Trả về list image_id, frontend tự build URL

@@ -83,7 +83,11 @@ def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing
         return None
     for field, value in data.model_dump(exclude_unset=True).items():
         if field == "images":
-            listing.images = value   # dùng property setter
+            listing.images = value
+        elif field == "status":
+            # ✅ Chỉ cho phép reset về pending nếu bài đang bị rejected
+            if value == "pending" and listing.status == "rejected":
+                listing.status = "pending"
         else:
             setattr(listing, field, value)
     db.commit()
@@ -120,12 +124,12 @@ def approve_listing(db: Session, listing_id: int) -> Listing | None:
     db.refresh(listing)
     return listing
 
-
 def reject_listing(db: Session, listing_id: int, reason: str) -> Listing | None:
     listing = get_listing_by_id(db, listing_id)
     if not listing:
         return None
     listing.status = "rejected"
+    listing.reject_reason = reason  # ← THÊM DÒNG NÀY
     db.commit()
     db.refresh(listing)
     return listing
