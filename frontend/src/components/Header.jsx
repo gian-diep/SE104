@@ -14,22 +14,69 @@ function getAvatarUrl(avatarUrl) {
 }
 
 /** Icon-only button với tooltip hover */
-function NavIconBtn({ to, href, icon: Icon, label, badge }) {
-  const cls =
-    'relative flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-primary hover:bg-teal-50 transition-all duration-200 group'
+function NavIconBtn({ to, href, icon: Icon, label, badge, primary = false }) {
+  const cls = primary
+  ? `
+    relative flex items-center gap-2.5
+    px-4 h-11 rounded-2xl
+    bg-gradient-to-br from-teal-500 via-teal-500 to-emerald-400
+    text-white
+    border border-teal-400/40
+    shadow-[0_10px_30px_rgba(20,184,166,0.30)]
+    hover:shadow-[0_14px_36px_rgba(20,184,166,0.40)]
+    hover:-translate-y-0.5
+    transition-all duration-300
+    font-heading font-semibold text-sm
+  `
+  : `
+    relative flex items-center gap-2.5
+    px-4 h-11 rounded-2xl
+    bg-gradient-to-b from-white to-teal-50/40
+    border border-teal-100
+    text-slate-700
+    shadow-[0_2px_10px_rgba(0,0,0,0.04)]
+    hover:border-teal-200
+    hover:from-teal-50
+    hover:to-teal-100/40
+    hover:shadow-[0_8px_24px_rgba(13,148,136,0.10)]
+    hover:-translate-y-0.5
+    transition-all duration-300
+    font-heading font-semibold text-sm
+  `
 
   const inner = (
     <>
-      <Icon className="h-[18px] w-[18px]" />
+      <div className={`
+        flex items-center justify-center
+        w-7 h-7 rounded-xl
+        transition-all duration-300
+        ${primary
+          ? 'bg-white/15'
+          : 'bg-gradient-to-br from-teal-100 to-teal-50 border border-teal-100'}
+      `}>
+        <Icon
+          className={primary ? 'w-4 h-4 text-white' : 'w-4 h-4 text-primary'}
+          strokeWidth={2.5}
+        />
+      </div>
+
+      <span>{label}</span>
+
       {badge > 0 && (
-        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-amber-400 text-white rounded-full text-[9px] flex items-center justify-center font-bold px-0.5 shadow-sm leading-none">
+        <span className="
+          absolute -top-1.5 -right-1.5
+          min-w-[18px] h-[18px]
+          bg-amber-400 text-white
+          rounded-full
+          text-[10px]
+          flex items-center justify-center
+          font-bold px-1
+          border-2 border-white
+          shadow-sm
+        ">
           {badge}
         </span>
       )}
-      {/* Tooltip */}
-      <span className="pointer-events-none absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap bg-foreground text-white font-paragraph text-[11px] px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 shadow-card">
-        {label}
-      </span>
     </>
   )
 
@@ -84,7 +131,7 @@ export default function Header() {
             </Link>
 
             {/* ── Nav ─────────────────────────── */}
-            <nav className="flex items-center gap-0.5">
+            <nav className="flex items-center gap-3">
 
               {/* Tìm kiếm — always visible */}
               <NavIconBtn href="/#search" icon={Search} label="Tìm kiếm" />

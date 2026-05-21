@@ -9,10 +9,11 @@ import {
   Sparkles, GraduationCap, TrendingUp, Zap, Clock, Gift,
   ChevronRight, Layers,
 } from 'lucide-react'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
 import { getListings } from '@/lib/ListingApi'
 import { buildImageUrl } from '@/lib/Imageapi'
+import { getUser, getUsers } from '@/lib/Userapi'
 
 const CATEGORIES = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
 const CONDITIONS = ['Mới', 'Như mới', 'Tốt', 'Khá tốt', 'Trung bình']
@@ -164,7 +165,7 @@ function ListingCardCompact({ listing }) {
   const imgUrl = getListingImage(listing)
   const isFree = listing.item_price === 0
   return (
-    <Link to={`/listings/${listing.id}`} className="block group flex-shrink-0 w-52">
+    <Link to={`/listings/${listing.id}`} className="block group flex-shrink-0 w-80">
       <div className="bg-white rounded-2xl border border-teal-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden">
         <div className="w-full aspect-[3/2] bg-surface relative overflow-hidden">
           {imgUrl ? (
@@ -175,7 +176,7 @@ function ListingCardCompact({ listing }) {
             </div>
           )}
           <span className={`absolute bottom-2 right-2 font-heading text-[10px] font-bold px-2 py-1 rounded-full shadow-sm ${isFree ? 'bg-emerald-500 text-white' : 'bg-foreground text-white'}`}>
-            {isFree ? '🎁 Free' : `${listing.item_price?.toLocaleString('vi-VN')}đ`}
+            {isFree ? 'Free' : `${listing.item_price?.toLocaleString('vi-VN')}đ`}
           </span>
         </div>
         <div className="p-3">
@@ -220,7 +221,7 @@ function ListingCard({ listing, index }) {
             <span className={`absolute bottom-3 right-3 font-heading text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${
               isFree ? 'bg-emerald-500 text-white' : listing.item_price <= 50000 ? 'bg-accent text-white' : 'bg-foreground text-white'
             }`}>
-              {isFree ? '🎁 Miễn phí' : `${listing.item_price?.toLocaleString('vi-VN')}đ`}
+              {isFree ? 'Miễn phí' : `${listing.item_price?.toLocaleString('vi-VN')}đ`}
             </span>
           </div>
           <div className="p-4 flex flex-col flex-grow">
@@ -259,6 +260,42 @@ function ListingCard({ listing, index }) {
               })()}
             </div>
           </div>
+        </div>
+      </Link>
+    </motion.div>
+  )
+}
+
+function UserCard({ user, index }) {
+  const userListings = /* cần truyền vào */ []
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }} transition={{ duration: 0.3, delay: index * 0.04 }}>
+      <Link to={`/nguoi-dung/${user.id}`} className="block group">
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 p-5">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center font-heading text-lg font-black text-white shadow-sm"
+              style={{ backgroundColor: avatarColor(user.username) }}>
+              {getInitials(user.username)}
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                {user.username || 'Ẩn danh'}
+              </h3>
+              {user.university && (
+                <p className="font-paragraph text-xs text-muted-foreground truncate mt-0.5">{user.university}</p>
+              )}
+              {user.rating != null && (
+                <div className="flex items-center gap-1 mt-1">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <span className="font-heading text-xs font-bold text-amber-600">{user.rating.toFixed(1)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          {user.bio && (
+            <p className="font-paragraph text-xs text-muted-foreground line-clamp-2 leading-relaxed">{user.bio}</p>
+          )}
         </div>
       </Link>
     </motion.div>
@@ -322,25 +359,64 @@ export default function HomePage() {
   const [universityFilter, setUniversityFilter] = useState('all')
   const [conditionFilter, setConditionFilter] = useState('all')
   const [priceFilter, setPriceFilter]         = useState('all')
+  const [searchMode, setSearchMode] = useState('listing')
+  const [users, setUsers] = useState([])
+
+  const [userSearchQuery, setUserSearchQuery] = useState('')
+  const [userUniversityFilter, setUserUniversityFilter] = useState('all')
+  const knownUniversities = UNIVERSITIES.filter(u => u !== 'Khác')
+  const knownSubjects = SUBJECTS.filter(s => s !== 'Khác')
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      if (userSearchQuery) {
+        const q = userSearchQuery.toLowerCase()
+
+        const fullName = (
+          `${u.username || ''}}`
+        ).toLowerCase()
+
+        if (!fullName.includes(q)) return false
+      }
+
+      if (userUniversityFilter !== 'all') {
+        if (userUniversityFilter === 'Khác') {
+          if (knownUniversities.includes(u.university)) return false
+        } else {
+          if (u.university !== userUniversityFilter) return false
+        }
+      }
+
+      return true
+    })
+  }, [users, userSearchQuery, userUniversityFilter])
 
   const searchSectionRef = useRef(null)
 
   useEffect(() => {
-    async function loadListings() {
+    async function loadData() {
       try {
         setIsLoading(true)
-        const data = await getListings()
-        setListings(data)
+
+        const [listingData, userData] = await Promise.all([
+          getListings(),
+          getUsers()
+        ])
+
+        setListings(listingData)
+        setUsers(userData)
       } catch (err) {
-        console.error('Load listings failed:', err)
+        console.error('Load data failed:', err)
       } finally {
         setIsLoading(false)
       }
     }
-    loadListings()
+
+    loadData()
   }, [])
 
   const approvedListings = listings.filter(l => l.status === 'approved' && l.transaction_status === 'available')
+  const bookListing = listings.filter(l => l.status === 'approved')
 
   const applyPriceFilter = useCallback((list, filter) => {
     if (filter === 'all')      return list
@@ -352,8 +428,6 @@ export default function HomePage() {
   }, [])
 
   // ── Filter logic — hỗ trợ option 'Khác' cho trường & môn ─────────────────
-  const knownUniversities = UNIVERSITIES.filter(u => u !== 'Khác')
-  const knownSubjects     = SUBJECTS.filter(s => s !== 'Khác')
 
   const filteredListings = applyPriceFilter(
     approvedListings.filter(item => {
@@ -406,15 +480,16 @@ export default function HomePage() {
     setUniversityFilter('all'); setConditionFilter('all'); setPriceFilter('all')
   }
 
-  const goToSearch = useCallback((priceVal = 'all') => {
+  const goToSearch = useCallback((priceVal = 'all', categoryVal = 'all') => {
     setPriceFilter(priceVal)
-    setSearchQuery(''); setCategoryFilter('all'); setSubjectFilter('all')
+    setCategoryFilter(categoryVal)
+    setSearchQuery(''); setSubjectFilter('all')
     setUniversityFilter('all'); setConditionFilter('all')
     searchSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
   const approvedCount = approvedListings.length
-  const univCount     = Array.from(new Set(listings.filter(l => l.status === 'approved').map(l => l.university).filter(Boolean))).length
+  const bookCount = bookListing.length
   const freeCount     = freeListings.length
 
   return (
@@ -496,8 +571,8 @@ export default function HomePage() {
           transition={{ duration: 0.7, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="grid grid-cols-3 bg-white rounded-2xl border border-teal-100 shadow-card mt-10 z-10 relative overflow-hidden">
           {[
+            { icon: BookOpen, value: bookCount,     label: 'Tài liệu',     color: 'text-indigo-500',    onClick: () => goToSearch() },
             { icon: BookOpen,      value: approvedCount, label: 'Tài liệu đang rao',  color: 'text-primary',       onClick: () => goToSearch() },
-            { icon: GraduationCap, value: univCount,     label: 'Trường đại học',     color: 'text-indigo-500',    onClick: () => goToSearch() },
             { icon: Sparkles,      value: freeCount,     label: 'Tài liệu miễn phí', color: 'text-emerald-500',   onClick: () => goToSearch('free') },
           ].map((stat, i) => {
             const Icon = stat.icon
@@ -520,13 +595,13 @@ export default function HomePage() {
         <HorizontalSection title="Mới đăng" icon={Clock} items={recentListings} onViewAll={() => goToSearch()} accentColor="teal" emptyText="Chưa có tài liệu mới" />
         <HorizontalSection title="Miễn phí" icon={Gift} items={freeListings} onViewAll={() => goToSearch('free')} accentColor="emerald" emptyText="Chưa có tài liệu miễn phí" />
         {giaoTrinhListings.length > 0 && (
-          <HorizontalSection title="Giáo trình" icon={GraduationCap} items={giaoTrinhListings} onViewAll={() => goToSearch()} accentColor="amber" emptyText="Chưa có giáo trình" />
+          <HorizontalSection title="Giáo trình" icon={GraduationCap} items={giaoTrinhListings} onViewAll={() => goToSearch('all','Giáo trình')} accentColor="amber" emptyText="Chưa có giáo trình" />
         )}
         {sachListings.length > 0 && (
-          <HorizontalSection title="Sách" icon={BookOpen} items={sachListings} onViewAll={() => goToSearch()} accentColor="teal" emptyText="Chưa có sách" />
+          <HorizontalSection title="Sách" icon={BookOpen} items={sachListings} onViewAll={() => goToSearch('all', 'Sách')} accentColor="teal" emptyText="Chưa có sách" />
         )}
         {onlineListings.length > 0 && (
-          <HorizontalSection title="Tài liệu Online" icon={Layers} items={onlineListings} onViewAll={() => goToSearch()} accentColor="emerald" emptyText="Chưa có tài liệu online" />
+          <HorizontalSection title="Tài liệu Online" icon={Layers} items={onlineListings} onViewAll={() => goToSearch('all','Tài liệu online')} accentColor="emerald" emptyText="Chưa có tài liệu online" />
         )}
       </div>
 
@@ -534,133 +609,218 @@ export default function HomePage() {
       <section ref={searchSectionRef} id="search" className="w-full py-20 relative scroll-mt-20">
         <div className="absolute inset-0 bg-gradient-to-b from-background to-teal-50/30 pointer-events-none" />
         <div className="max-w-[120rem] mx-auto px-6 md:px-16 relative z-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
             <div>
               <div className="inline-flex items-center gap-2 bg-teal-50 text-primary px-3 py-1.5 rounded-full border border-teal-200 text-xs font-heading font-semibold uppercase tracking-wide mb-4">
                 <Search className="w-3.5 h-3.5" />Tìm kiếm
               </div>
-              <h2 className="font-heading text-4xl md:text-5xl font-black tracking-tighter text-foreground">TÌM TÀI LIỆU</h2>
+              <h2 className="font-heading text-4xl md:text-5xl font-black tracking-tighter text-foreground">TÌM KIẾM</h2>
             </div>
-            <div className="mt-4 md:mt-0 bg-white rounded-xl border border-teal-100 px-4 py-2 shadow-soft">
-              <p className="font-paragraph text-sm text-muted-foreground">
-                <span className="font-bold text-primary">{filteredListings.length}</span> kết quả phù hợp
-              </p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-12 gap-8 items-start">
-            {/* Filter Sidebar */}
-            <div className="col-span-12 lg:col-span-3 lg:sticky lg:top-28">
-              <div className="bg-white rounded-2xl border border-teal-100 shadow-card p-5 space-y-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center">
-                      <SlidersHorizontal className="w-4 h-4 text-primary" />
-                    </div>
-                    <h4 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground">Bộ lọc</h4>
-                  </div>
-                  <button onClick={resetFilters} className="font-paragraph text-xs text-muted-foreground hover:text-primary transition-colors">
-                    Xóa hết
-                  </button>
-                </div>
-
-                {/* Từ khóa */}
-                <div className="space-y-1.5">
-                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Từ khóa</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="text" placeholder="Tên, tài liệu, môn học..."
-                      value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-10 h-10 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
-                  </div>
-                </div>
-
-                {/* Mức giá */}
-                <div className="space-y-1.5">
-                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mức giá</label>
-                  <Select value={priceFilter} onValueChange={setPriceFilter}>
-                    <SelectTrigger className="h-10 rounded-xl border-teal-100 focus:ring-primary font-paragraph bg-surface text-sm">
-                      <SelectValue placeholder="Tất cả mức giá" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-teal-100 shadow-card">
-                      {PRICE_OPTIONS.map(o => (
-                        <SelectItem key={o.value} value={o.value} className="rounded-lg">{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Môn học, Trường, Tình trạng, Phân loại */}
-                {[
-                  { label: 'Tên môn học', value: subjectFilter,    onChange: setSubjectFilter,    placeholder: 'Tất cả môn học', options: SUBJECTS },
-                  { label: 'Tên trường',  value: universityFilter, onChange: setUniversityFilter, placeholder: 'Tất cả trường',  options: UNIVERSITIES },
-                  { label: 'Tình trạng',  value: conditionFilter,  onChange: setConditionFilter,  placeholder: 'Tất cả',         options: CONDITIONS },
-                  { label: 'Phân loại',   value: categoryFilter,   onChange: setCategoryFilter,   placeholder: 'Tất cả loại',    options: CATEGORIES },
-                ].map(f => (
-                  <div key={f.label} className="space-y-1.5">
-                    <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">{f.label}</label>
-                    <Select value={f.value} onValueChange={f.onChange}>
-                      <SelectTrigger className="h-10 rounded-xl border-teal-100 focus:ring-primary font-paragraph bg-surface text-sm">
-                        <SelectValue placeholder={f.placeholder} />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-teal-100 shadow-card">
-                        <SelectItem value="all" className="rounded-lg">{f.placeholder}</SelectItem>
-                        {f.options.map(o => (
-                          <SelectItem key={o} value={o} className="rounded-lg">{o}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-
-                {/* Badge filter giá active */}
-                {priceFilter !== 'all' && (
-                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-                    <Gift className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                    <span className="font-paragraph text-xs text-emerald-700 font-semibold flex-1">
-                      {PRICE_OPTIONS.find(o => o.value === priceFilter)?.label}
-                    </span>
-                    <button onClick={() => setPriceFilter('all')} className="text-emerald-400 hover:text-emerald-700 transition-colors text-sm leading-none">✕</button>
-                  </div>
-                )}
+            {/* Mode toggle — moved here, outside sidebar */}
+            <div className="mt-4 md:mt-0 flex items-center gap-3">
+              <div className="inline-flex bg-white border border-teal-100 shadow-soft p-1 rounded-2xl">
+                <button
+                  onClick={() => setSearchMode('listing')}
+                  className={`px-5 py-2 rounded-xl font-heading text-sm font-semibold transition-all ${
+                    searchMode === 'listing' ? 'bg-teal-gradient text-white shadow-btn' : 'text-muted-foreground hover:text-primary'
+                  }`}
+                >
+                  Bài đăng
+                </button>
+                <button
+                  onClick={() => setSearchMode('user')}
+                  className={`px-5 py-2 rounded-xl font-heading text-sm font-semibold transition-all ${
+                    searchMode === 'user' ? 'bg-teal-gradient text-white shadow-btn' : 'text-muted-foreground hover:text-primary'
+                  }`}
+                >
+                  Người dùng
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-teal-100 px-4 py-2 shadow-soft">
+                <p className="font-paragraph text-sm text-muted-foreground">
+                  <span className="font-bold text-primary">
+                    {searchMode === 'listing' ? filteredListings.length : filteredUsers.length}
+                  </span> kết quả
+                </p>
               </div>
             </div>
-
-            {/* Listings grid */}
-            <div className="col-span-12 lg:col-span-9 min-h-[60vh]">
-              {isLoading ? (
-                <div className="w-full h-64 flex items-center justify-center">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="relative w-14 h-14">
-                      <div className="absolute inset-0 rounded-full border-4 border-teal-100" />
-                      <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
-                    </div>
-                    <p className="font-heading text-sm font-semibold text-muted-foreground">Đang tải tài liệu...</p>
-                  </div>
-                </div>
-              ) : filteredListings.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                  <AnimatePresence mode="popLayout">
-                    {filteredListings.map((listing, index) => (
-                      <ListingCard key={listing.id} listing={listing} index={index} />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <div className="w-full h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-teal-200 gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
-                    <BookOpen className="w-8 h-8 text-teal-300" />
-                  </div>
-                  <p className="font-heading text-lg font-bold text-muted-foreground">Không có kết quả</p>
-                  <p className="font-paragraph text-sm text-muted-foreground">Thử thay đổi bộ lọc tìm kiếm</p>
-                  <button onClick={resetFilters}
-                    className="mt-2 px-5 py-2 rounded-xl bg-teal-gradient text-white font-heading text-sm font-semibold shadow-btn hover:shadow-card transition-all">
-                    Xóa bộ lọc
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
+
+          <AnimatePresence mode="wait">
+            {searchMode === 'listing' ? (
+              <motion.div key="listing-mode" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }} className="grid grid-cols-12 gap-8 items-start">
+
+                {/* Filter Sidebar — Bài đăng */}
+                <div className="col-span-12 lg:col-span-3 lg:sticky lg:top-28">
+                  <div className="bg-white rounded-2xl border border-teal-100 shadow-card p-5 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center">
+                          <SlidersHorizontal className="w-4 h-4 text-primary" />
+                        </div>
+                        <h4 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground">Bộ lọc</h4>
+                      </div>
+                      <button onClick={resetFilters} className="font-paragraph text-xs text-muted-foreground hover:text-primary transition-colors">Xóa hết</button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Từ khóa</label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="text" placeholder="Tên, tài liệu, môn học..."
+                          value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                          className="pl-10 h-10 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mức giá</label>
+                      <Select value={priceFilter} onValueChange={setPriceFilter}>
+                        <SelectTrigger className="h-10 rounded-xl border-teal-100 focus:ring-primary font-paragraph bg-surface text-sm">
+                          <SelectValue placeholder="Tất cả mức giá" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-teal-100 shadow-card">
+                          {PRICE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value} className="rounded-lg">{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {[
+                      { label: 'Tên môn học', value: subjectFilter,    onChange: setSubjectFilter,    placeholder: 'Tất cả môn học', options: SUBJECTS },
+                      { label: 'Tên trường',  value: universityFilter, onChange: setUniversityFilter, placeholder: 'Tất cả trường',  options: UNIVERSITIES },
+                      { label: 'Tình trạng',  value: conditionFilter,  onChange: setConditionFilter,  placeholder: 'Tất cả',         options: CONDITIONS },
+                      { label: 'Phân loại',   value: categoryFilter,   onChange: setCategoryFilter,   placeholder: 'Tất cả loại',    options: CATEGORIES },
+                    ].map(f => (
+                      <div key={f.label} className="space-y-1.5">
+                        <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">{f.label}</label>
+                        <Select value={f.value} onValueChange={f.onChange}>
+                          <SelectTrigger className="h-10 rounded-xl border-teal-100 focus:ring-primary font-paragraph bg-surface text-sm">
+                            <SelectValue placeholder={f.placeholder} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-teal-100 shadow-card">
+                            <SelectItem value="all" className="rounded-lg">{f.placeholder}</SelectItem>
+                            {f.options.map(o => <SelectItem key={o} value={o} className="rounded-lg">{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+
+                    {priceFilter !== 'all' && (
+                      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                        <Gift className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <span className="font-paragraph text-xs text-emerald-700 font-semibold flex-1">
+                          {PRICE_OPTIONS.find(o => o.value === priceFilter)?.label}
+                        </span>
+                        <button onClick={() => setPriceFilter('all')} className="text-emerald-400 hover:text-emerald-700 transition-colors text-sm leading-none">✕</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Listings grid */}
+                <div className="col-span-12 lg:col-span-9 min-h-[60vh]">
+                  {isLoading ? (
+                    <div className="w-full h-64 flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative w-14 h-14">
+                          <div className="absolute inset-0 rounded-full border-4 border-teal-100" />
+                          <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+                        </div>
+                        <p className="font-heading text-sm font-semibold text-muted-foreground">Đang tải tài liệu...</p>
+                      </div>
+                    </div>
+                  ) : filteredListings.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                      <AnimatePresence mode="popLayout">
+                        {filteredListings.map((listing, index) => <ListingCard key={listing.id} listing={listing} index={index} />)}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-teal-200 gap-3">
+                      <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
+                        <BookOpen className="w-8 h-8 text-teal-300" />
+                      </div>
+                      <p className="font-heading text-lg font-bold text-muted-foreground">Không có kết quả</p>
+                      <p className="font-paragraph text-sm text-muted-foreground">Thử thay đổi bộ lọc tìm kiếm</p>
+                      <button onClick={resetFilters}
+                        className="mt-2 px-5 py-2 rounded-xl bg-teal-gradient text-white font-heading text-sm font-semibold shadow-btn hover:shadow-card transition-all">
+                        Xóa bộ lọc
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div key="user-mode" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }} className="grid grid-cols-12 gap-8 items-start">
+
+                {/* Filter Sidebar — Người dùng */}
+                <div className="col-span-12 lg:col-span-3 lg:sticky lg:top-28">
+                  <div className="bg-white rounded-2xl border border-teal-100 shadow-card p-5 space-y-5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center">
+                        <SlidersHorizontal className="w-4 h-4 text-primary" />
+                      </div>
+                      <h4 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground">Tìm người dùng</h4>
+                    </div>
+
+                    {/* Search tên */}
+                    <div className="space-y-1.5">
+                      <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tên người dùng</label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="text" placeholder="Nhập tên..."
+                          value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)}
+                          className="pl-10 h-10 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                      </div>
+                    </div>
+
+                    {/* Filter trường */}
+                    <div className="space-y-1.5">
+                      <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường đại học</label>
+                      <Select value={userUniversityFilter} onValueChange={setUserUniversityFilter}>
+                        <SelectTrigger className="h-10 rounded-xl border-teal-100 focus:ring-primary font-paragraph bg-surface text-sm">
+                          <SelectValue placeholder="Tất cả trường" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-teal-100 shadow-card">
+                          <SelectItem value="all" className="rounded-lg">Tất cả trường</SelectItem>
+                          {UNIVERSITIES.map(u => <SelectItem key={u} value={u} className="rounded-lg">{u}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(userSearchQuery || userUniversityFilter !== 'all') && (
+                      <button onClick={() => { setUserSearchQuery(''); setUserUniversityFilter('all') }}
+                        className="w-full py-2 rounded-xl border border-teal-200 font-heading text-xs font-semibold text-muted-foreground hover:text-primary hover:border-primary transition-colors">
+                        Xóa bộ lọc
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Users grid */}
+                <div className="col-span-12 lg:col-span-9 min-h-[60vh]">
+                  {filteredUsers.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                      <AnimatePresence mode="popLayout">
+                        {filteredUsers.map((user, index) => <UserCard key={user.id} user={user} index={index} />)}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-teal-200 gap-3">
+                      <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
+                        <GraduationCap className="w-8 h-8 text-teal-300" />
+                      </div>
+                      <p className="font-heading text-lg font-bold text-muted-foreground">Không tìm thấy người dùng</p>
+                      <p className="font-paragraph text-sm text-muted-foreground">Thử tìm tên khác hoặc đổi trường</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 

@@ -162,10 +162,18 @@ export default function ListingDetailPage() {
 
   const renderRequestButton = () => {
     if (isSeller) return null
-    if (listing.transaction_status === 'sold' || listing.transaction_status === 'negotiating') {
+    if (listing.transaction_status === 'negotiating') {
       return (
         <button disabled className="w-full h-14 rounded-2xl bg-surface border border-teal-100 font-heading font-semibold text-sm text-muted-foreground flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
           <Lock className="w-5 h-5" />Đang thương lượng
+        </button>
+      )
+    }
+    if (listing.transaction_status === 'sold')
+    {
+        return (
+        <button disabled className="w-full h-14 rounded-2xl bg-surface border border-teal-100 font-heading font-semibold text-sm text-muted-foreground flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+          <Lock className="w-5 h-5" />Đã bán
         </button>
       )
     }
@@ -293,7 +301,7 @@ export default function ListingDetailPage() {
               <div className={`inline-flex items-center font-heading text-2xl font-black ${
                 listing.item_price === 0 ? 'text-emerald-500' : 'text-primary'
               }`}>
-                {listing.item_price === 0 ? '🎁 Miễn phí' : `${listing.item_price.toLocaleString('vi-VN')} đ`}
+                {listing.item_price === 0 ? 'Miễn phí' : `${listing.item_price.toLocaleString('vi-VN')} đ`}
               </div>
             </div>
 

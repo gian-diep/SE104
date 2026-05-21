@@ -264,28 +264,88 @@ export default function MessagesPage() {
 
             {/* Active Sessions Tab */}
             {activeTab === 'active' && (
-              <div className="space-y-3">
-                {activeSessions.length > 0 ? activeSessions.map(session => (
-                  <div key={session.id} className="bg-white rounded-2xl border border-primary/20 shadow-soft p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                        <span className="font-heading text-xs font-semibold uppercase tracking-wide text-primary">Đang chat</span>
+              <div className="space-y-4">
+                {activeSessions.length > 0 ? (
+                  activeSessions.map(session => {
+                    const isSeller = session.seller_id === currentUser.id
+                    const otherName = isSeller
+                      ? session.buyer_name
+                      : session.seller_name
+
+                    return (
+                      <div
+                        key={session.id}
+                        className="
+                          group relative overflow-hidden
+                          bg-white rounded-3xl border border-teal-100
+                          shadow-soft hover:shadow-card
+                          transition-all duration-300
+                          hover:-translate-y-0.5
+                        "
+                      >
+                        {/* Accent bar */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+
+                        <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                          {/* Left content */}
+                          <div className="flex items-start gap-4 min-w-0">
+                            {/* Chat icon bubble */}
+                            <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center flex-shrink-0">
+                              <MessageCircle className="h-6 w-6 text-primary" />
+                            </div>
+
+                            <div className="min-w-0">
+                              {/* Status */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="font-heading text-[10px] font-semibold uppercase tracking-widest">
+                                    Đang hoạt động
+                                  </span>
+                                </span>
+                              </div>
+
+                              {/* Listing name */}
+                              <h3 className="font-heading text-lg font-bold text-foreground line-clamp-2 mb-1">
+                                {session.listing_name}
+                              </h3>
+
+                              {/* User info */}
+                              <p className="font-paragraph text-sm text-muted-foreground">
+                                {isSeller ? 'Người mua:' : 'Người bán:'}{' '}
+                                <span className="font-semibold text-foreground">
+                                  {otherName}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right action */}
+                          <button
+                            onClick={() => openSession(session)}
+                            className="
+                              flex items-center justify-center gap-2
+                              px-5 py-3 rounded-2xl
+                              bg-teal-gradient text-white
+                              font-heading text-xs font-semibold uppercase tracking-wide
+                              shadow-btn hover:shadow-card
+                              hover:-translate-y-0.5
+                              transition-all flex-shrink-0
+                            "
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Mở chat
+                          </button>
+                        </div>
                       </div>
-                      <p className="font-heading text-sm font-bold text-foreground">{session.listing_name}</p>
-                      <p className="font-paragraph text-sm text-muted-foreground">
-                        {session.seller_id === currentUser.id
-                          ? `Người mua: ${session.buyer_name}`
-                          : `Người bán: ${session.seller_name}`}
-                      </p>
-                    </div>
-                    <button onClick={() => openSession(session)}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-gradient text-white font-heading text-xs font-semibold shadow-btn hover:shadow-card hover:-translate-y-0.5 transition-all flex-shrink-0">
-                      <MessageCircle className="h-4 w-4" />Mở chat
-                    </button>
-                  </div>
-                )) : (
-                  <EmptyState icon={MessageCircle} title="Không có cuộc trò chuyện nào" subtitle="Chấp thuận yêu cầu để bắt đầu chat" />
+                    )
+                  })
+                ) : (
+                  <EmptyState
+                    icon={MessageCircle}
+                    title="Không có cuộc trò chuyện nào"
+                    subtitle="Chấp thuận yêu cầu để bắt đầu chat"
+                  />
                 )}
               </div>
             )}

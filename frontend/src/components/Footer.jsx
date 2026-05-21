@@ -120,11 +120,11 @@ export default function Footer() {
             {/* Contact */}
             <div className="col-span-12 sm:col-span-4 lg:col-span-2">
               <h3 className="font-heading text-sm font-bold uppercase tracking-widest text-white/40 mb-5">Liên hệ</h3>
-              <a href="mailto:info@bookycle.com" className="flex items-center gap-2.5 text-white/60 hover:text-primary-light transition-colors group">
+              <a href="mailto:acolonyofcockroaches@gmail.com" className="flex items-center gap-2.5 text-white/60 hover:text-primary-light transition-colors group">
                 <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <Mail className="h-4 w-4" />
                 </div>
-                <span className="font-paragraph text-sm">info@bookycle.com</span>
+                <span className="font-paragraph text-sm">acolonyofcockroaches@gmail.com</span>
               </a>
             </div>
 

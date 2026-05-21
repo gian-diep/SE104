@@ -25,6 +25,10 @@ export async function getListingById(id) {
   return apiFetch(`/listings/${id}`)
 }
 
+export async function getListingByAdmin(id) {
+  return apiFetch(`admin/listings/${id}`)
+}
+
 /**
  * Lấy tất cả bài đăng của một seller (trang Account)
  */

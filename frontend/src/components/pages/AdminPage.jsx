@@ -5,7 +5,7 @@ import {
   AlertTriangle, Eye, LogOut, BarChart3,
   Ban, Trash2, Star, RefreshCw, Search,
   BookOpen, ClipboardList, Banknote, User, Flag, ExternalLink,
-  UserCircle
+  UserCircle, UserX
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,7 +87,11 @@ function ModerationTab({ onStatsChange }) {
   const [rejectReason, setRejectReason] = useState({})
   const [busy, setBusy]                 = useState({})
   const [error, setError]               = useState('')
-
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    listingId: null,
+    listingName: '',
+  })
   const load = useCallback(async () => {
     setLoading(true); setError('')
     try {
@@ -134,12 +138,26 @@ function ModerationTab({ onStatsChange }) {
     finally { setBusy(p => ({ ...p, [id]: false })) }
   }
 
-  const deleteListing = async (id) => {
-    if (!confirm('Xóa bài đăng này?')) return
+  const deleteListing = async () => {
+    const id = deleteModal.listingId
+    if (!id) return
+
     setBusy(p => ({ ...p, [id]: true }))
-    try { await adminDeleteListing(id); await load() }
-    catch (e) { alert('Lỗi: ' + e.message) }
-    finally { setBusy(p => ({ ...p, [id]: false })) }
+
+    try {
+      await adminDeleteListing(id)
+      await load()
+
+      setDeleteModal({
+        open: false,
+        listingId: null,
+        listingName: '',
+      })
+    } catch (e) {
+      alert('Lỗi: ' + e.message)
+    } finally {
+      setBusy(p => ({ ...p, [id]: false }))
+    }
   }
 
   return (
@@ -226,7 +244,7 @@ function ModerationTab({ onStatsChange }) {
                   </div>
 
                   <div className="col-span-12 md:col-span-3 border-t md:border-t-0 md:border-l border-secondary flex flex-col">
-                    <Link to={`admin/listings/${listing.id}`} target="_blank"
+                    <Link to={`/admin/listings/${listing.id}`} 
                       className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors border-b border-secondary">
                       <Eye className="h-3.5 w-3.5" />Xem bài
                     </Link>
@@ -266,7 +284,14 @@ function ModerationTab({ onStatsChange }) {
                       </>
                     )}
 
-                    <button onClick={() => deleteListing(listing.id)} disabled={isBusy}
+                    <button
+                        onClick={() =>
+                          setDeleteModal({
+                            open: true,
+                            listingId: listing.id,
+                            listingName: listing.item_name,
+                          })
+                        } disabled={isBusy}
                       className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50">
                       <Trash2 className="h-3.5 w-3.5" />Xóa bài
                     </button>
@@ -275,6 +300,89 @@ function ModerationTab({ onStatsChange }) {
               </div>
             )
           })}
+        </div>
+      )}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] animate-in zoom-in-95 duration-200">
+
+            {/* Glow effect */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
+
+            {/* Header */}
+            <div className="relative px-7 pt-7 pb-5 border-b border-red-100 bg-gradient-to-b from-red-50/70 to-white">
+              <div className="flex items-start gap-4">
+
+                {/* Icon */}
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-100 shadow-sm">
+                  <Trash2 className="h-7 w-7 text-red-500" />
+                </div>
+
+                {/* Title */}
+                <div className="flex-1">
+                  <h3 className="font-heading text-xl uppercase tracking-wide text-gray-900">
+                    Xóa bài đăng
+                  </h3>
+
+                  <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                    Bài đăng sẽ bị xóa vĩnh viễn và không thể khôi phục.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-7 py-6">
+              <p className="text-sm text-gray-600">
+                Bạn có chắc muốn xóa bài đăng này không?
+              </p>
+
+              <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm">
+                    📝
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-widest text-red-500 font-semibold">
+                      Bài đăng sẽ bị xóa
+                    </p>
+
+                    <p className="truncate font-heading text-sm uppercase text-gray-900">
+                      {deleteModal.listingName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+
+              <button
+                onClick={() =>
+                  setDeleteModal({
+                    open: false,
+                    listingId: null,
+                    listingName: '',
+                  })
+                }
+                className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:scale-[1.02] hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+              >
+                Hủy
+              </button>
+
+              <button
+                onClick={deleteListing}
+                disabled={busy[deleteModal.listingId]}
+                className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:scale-[1.02] hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy[deleteModal.listingId]
+                  ? 'Đang xóa...'
+                  : 'Xóa bài'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -360,10 +468,15 @@ function ReportCard({ report, onResolve }) {
             </div>
  
             <div className="min-w-0">
-              {/* Reason */}
-              <p className="font-heading text-sm uppercase tracking-wide text-foreground leading-snug mb-1 truncate">
-                {report.reason}
-              </p>
+              {/* Reason + detail label */}
+              <div className="mb-1">
+                <span className="text-[10px] font-heading uppercase tracking-widest text-muted-foreground mr-2">
+                  Lý do:
+                </span>
+                <span className="font-heading text-sm uppercase tracking-wide text-foreground leading-snug">
+                  {report.reason}
+                </span>
+              </div>
  
               {/* Reported user */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -466,7 +579,7 @@ function ReportTab() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // 'all' | 'pending' | 'resolved'
- 
+  
   const load = useCallback(async () => {
     setLoading(true)
  
@@ -605,6 +718,11 @@ function UsersTab() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy]       = useState({})
   const [error, setError]     = useState('')
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    userId: null,
+    userName: '',
+  })
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -635,12 +753,33 @@ function UsersTab() {
     finally { setBusy(p => ({ ...p, [userId]: false })) }
   }
 
-  const deleteUser = async (userId) => {
-    if (!confirm('Xóa user này? Tất cả bài đăng của họ cũng sẽ bị xóa.')) return
-    setBusy(p => ({ ...p, [userId]: true }))
-    try { await adminDeleteUser(userId); await load() }
-    catch (e) { alert('Lỗi: ' + e.message) }
-    finally { setBusy(p => ({ ...p, [userId]: false })) }
+  const deleteUser = async () => {
+    const userId = deleteModal.userId
+    if (!userId) return
+
+    setBusy(prev => ({
+      ...prev,
+      [userId]: true,
+    }))
+
+    try {
+      await adminDeleteUser(userId)
+
+      await load()
+
+      setDeleteModal({
+        open: false,
+        userId: null,
+        userName: '',
+      })
+    } catch (e) {
+      alert('Lỗi: ' + (e?.message || 'Không thể xóa người dùng'))
+    } finally {
+      setBusy(prev => ({
+        ...prev,
+        [userId]: false,
+      }))
+    }
   }
 
   return (
@@ -721,8 +860,18 @@ function UsersTab() {
                     <Ban className="h-4 w-4" />
                   </button>
                 )}
-                <button onClick={() => deleteUser(user.id)} disabled={busy[user.id]}
-                  title="Xóa user" className="p-2 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50">
+                <button
+                  onClick={() =>
+                    setDeleteModal({
+                      open: true,
+                      userId: user.id,
+                      userName: user.username,
+                    })
+                  }
+                  disabled={busy[user.id]}
+                  title="Xóa user"
+                  className="p-2 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -731,6 +880,87 @@ function UsersTab() {
         )}
       </div>
       <p className="font-paragraph text-xs text-muted-foreground mt-3 text-right">{filtered.length} người dùng</p>
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] animate-in zoom-in-95 duration-200">
+
+            {/* Accent */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
+
+            {/* Body */}
+            <div className="px-7 pt-8 pb-6 text-center">
+
+              {/* Icon */}
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-red-100 shadow-sm">
+                <UserX className="h-8 w-8 text-red-500" />
+              </div>
+
+              {/* Title */}
+              <h3 className="mt-5 font-heading text-2xl uppercase tracking-wide text-gray-900">
+                Xóa người dùng
+              </h3>
+
+              {/* Description */}
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                Bạn có chắc chắn muốn xóa tài khoản này không?
+              </p>
+
+              {/* User Card */}
+              <div className="mt-5 rounded-[1.5rem] border border-red-100 bg-red-50/50 p-4 text-left">
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm text-xl">
+                    👤
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-red-500">
+                      Người dùng sẽ bị xóa
+                    </p>
+
+                    <p className="truncate font-heading text-sm uppercase text-gray-900">
+                      {deleteModal.userName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+                <p className="text-xs leading-relaxed text-amber-800">
+                  ⚠️ Hành động này không thể hoàn tác và toàn bộ dữ liệu liên quan có thể bị mất.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+              <button
+                onClick={() =>
+                  setDeleteModal({
+                    open: false,
+                    userId: null,
+                    userName: '',
+                  })
+                }
+                className="flex-1 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+              >
+                Hủy
+              </button>
+
+              <button
+                onClick={deleteUser}
+                disabled={busy[deleteModal.userId]}
+                className="flex-1 rounded-xl bg-red-500 px-5 py-3 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy[deleteModal.userId]
+                  ? 'Đang xóa...'
+                  : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -749,6 +979,8 @@ function UsersTab() {
       rejected: 0,
       total: 0
     })
+    const [reportCount, setReportCount] = useState(0)  // ← THÊM
+    const [userCount, setUserCount]     = useState(0)  // ← THÊM
 
     const handleListingsLoaded = useCallback((listings) => {
       setStats({
@@ -757,6 +989,23 @@ function UsersTab() {
         rejected: listings.filter(l => l.status === 'rejected').length,
         total:    listings.length,
       })
+    }, [])
+
+    useEffect(() => {
+      getReports()
+        .then(data => setReportCount(data.filter(r => r.status !== 'resolved').length))
+        .catch(() => {})
+      adminGetUsers()
+        .then(data => setUserCount(data.length))
+        .catch(() => {})
+      adminGetListings({ limit: 200 })
+        .then(data => setStats({
+          pending:  data.filter(l => l.status === 'pending').length,
+          approved: data.filter(l => l.status === 'approved').length,
+          rejected: data.filter(l => l.status === 'rejected').length,
+          total:    data.length,
+        }))
+        .catch(() => {})
     }, [])
 
     useEffect(() => {
@@ -781,31 +1030,12 @@ function UsersTab() {
       return null
     }
 
-  // phần còn lại giữ nguyên
-  const reportCount = JSON.parse(
-    localStorage.getItem('bookycle_reports') || '[]'
-  ).filter(r => r.status === 'pending').length
 
   const TABS = [
-    {
-      id: 'moderation',
-      label: 'Kiểm duyệt',
-      icon: FileText,
-      badge: stats.pending
-    },
-    {
-      id: 'reports',
-      label: 'Báo cáo',
-      icon: AlertTriangle,
-      badge: reportCount
-    },
-    {
-      id: 'users',
-      label: 'Người dùng',
-      icon: Users,
-      badge: 0
-    },
-  ]
+    { id: 'moderation', label: 'Kiểm duyệt', icon: FileText,      badge: stats.pending },
+    { id: 'reports',    label: 'Báo cáo',     icon: AlertTriangle, badge: reportCount   },
+    { id: 'users',      label: 'Người dùng',  icon: Users,         badge: userCount     },
+    ]
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -820,10 +1050,46 @@ function UsersTab() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-paragraph text-sm text-muted-foreground hidden md:block">{currentUser.username}</span>
-            <button onClick={() => { logout(); navigate('/') }}
-              className="flex items-center gap-2 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-red-500 transition-colors px-3 py-2 border border-secondary hover:border-red-500/50">
-              <LogOut className="h-4 w-4" />Đăng xuất
+            <span className="font-paragraph text-sm text-muted-foreground hidden md:block">
+              {currentUser.username}
+            </span>
+
+            {/* Nút về trang người dùng */}
+            <Link
+              to="/"
+              className="
+                flex items-center gap-2
+                px-4 py-2.5 rounded-xl
+                bg-primary/10 border border-primary/20
+                text-primary
+                font-heading text-xs uppercase tracking-widest
+                hover:bg-primary hover:text-primary-foreground
+                hover:border-primary
+                transition-all duration-200
+                shadow-soft hover:shadow-card
+              "
+            >
+              <ExternalLink className="h-4 w-4" />
+              Về trang người dùng
+            </Link>
+
+            {/* Logout */}
+            <button
+              onClick={() => { logout(); navigate('/') }}
+              className="
+                flex items-center gap-2
+                px-4 py-2.5 rounded-xl
+                bg-primary/10 border border-primary/20
+                text-primary
+                font-heading text-xs uppercase tracking-widest
+                hover:bg-primary hover:text-primary-foreground
+                hover:border-primary
+                transition-all duration-200
+                shadow-soft hover:shadow-card
+              "
+            >
+              <LogOut className="h-4 w-4" />
+              Đăng xuất
             </button>
           </div>
         </div>

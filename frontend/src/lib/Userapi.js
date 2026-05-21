@@ -48,6 +48,16 @@ export async function uploadAvatar(file) {
   return res.json() // { avatar_id, url }
 }
 
+export async function getUsers() {
+  const res = await fetch(`${API_URL}/users`)
+
+  if (!res.ok) {
+    throw new Error('Không thể lấy danh sách user')
+  }
+
+  return await res.json()
+}
+
 export async function getUser(userId) {
   const res = await fetch(
     `${API_URL}/users/${userId}`
@@ -58,4 +68,8 @@ export async function getUser(userId) {
   }
 
   return await res.json()
+}
+
+export async function getUserRatings(userId) {
+  return apiFetch(`/users/${userId}/ratings`)
 }
