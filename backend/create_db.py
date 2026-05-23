@@ -30,8 +30,10 @@ def drop_all_fk_constraints(conn):
             print(f"  Skip FK [{fk_name}] -> {e}")
 
 
-# DROP theo thứ tự phụ thuộc
+# DROP theo thứ tự phụ thuộc (bảng con trước, bảng cha sau)
 DROP_ORDER = [
+    "ban_appeals",
+    "notifications",
     "ratings",
     "messages",
     "chat_sessions",

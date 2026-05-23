@@ -53,6 +53,7 @@ class ListingOut(BaseModel):
     transaction_status: str = "available"  # available | negotiating | sold
     seller_rating: float = 0
     seller_rating_count: int = 0
+    seller_avatar_url: Optional[str] = None
     reject_reason: Optional[str] = None 
 
 

@@ -66,3 +66,19 @@ def login(
         )
 
     return logged_user
+
+@router.get("/ban-info")
+def ban_info(email: str, db: Session = Depends(get_db)):
+    """
+    Trả về user_id và thông tin ban để frontend hiển thị form khiếu nại.
+    Chỉ trả dữ liệu nếu tài khoản đang bị ban.
+    """
+    from app.database.models import User
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.status != "banned":
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản bị ban")
+    return {
+        "user_id": user.id,
+        "ban_until": user.ban_until,
+        "username": user.username,
+    }

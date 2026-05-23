@@ -1,3 +1,8 @@
+# ============================================================
+# FILE: backend/app/database/models.py
+# THAY THẾ TOÀN BỘ FILE NÀY
+# ============================================================
+
 import json
 from sqlalchemy.dialects.mssql import NVARCHAR
 from sqlalchemy import (
@@ -21,7 +26,6 @@ class User(Base):
     username     = Column(NVARCHAR(255), nullable=False)
     email        = Column(String(255), unique=True, nullable=False)
     password     = Column(String(255), nullable=False)
-    # university   = Column(String(255), nullable=True)
     university   = Column(NVARCHAR(255), nullable=True)
     role         = Column(String(20),  nullable=False, default="user")
     avatar_url   = Column(String(500), nullable=True)
@@ -30,6 +34,13 @@ class User(Base):
     created_at   = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at   = Column(DateTime, server_default=func.now(),
                           onupdate=func.now(), nullable=False)
+
+    # [THAY ĐỔI 2] Thêm trường soft delete và ban có thời hạn
+    status       = Column(String(20), nullable=False, default="active")
+    # active | deleted
+    ban_until    = Column(DateTime, nullable=True)
+    # Nếu NULL → không bị ban theo thời hạn. Nếu có giá trị → ban hết hạn vào thời điểm đó.
+    # Ban vĩnh viễn dùng role="banned" như cũ
 
     listings = relationship(
         "Listing", back_populates="seller", cascade="all, delete-orphan"
@@ -54,7 +65,7 @@ class Listing(Base):
     id               = Column(Integer, primary_key=True, index=True)
     seller_id        = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
                               nullable=False, index=True)
-    seller_name      = Column(NVARCHAR(255), nullable=False)          # ← ForeignKey
+    seller_name      = Column(NVARCHAR(255), nullable=False)
     item_name        = Column(NVARCHAR(255), nullable=False)
     item_price       = Column(Float, default=0)
     item_description = Column(NVARCHAR(500), nullable=True)
@@ -63,19 +74,18 @@ class Listing(Base):
     subject          = Column(NVARCHAR(255), nullable=True)
     university       = Column(NVARCHAR(255), nullable=True)
     keywords         = Column(NVARCHAR(500), nullable=True)
-    status               = Column(String(20), default="pending")       # pending | approved | rejected
-    reject_reason = Column(NVARCHAR(500), nullable=True)
-    transaction_status   = Column(String(20), default="available")    # available | negotiating | sold
-    images_json          = Column(Text, default="[]")                  # ["abc.jpg", "def.png"]
+    status               = Column(String(20), default="pending")
+    # pending | approved | rejected | deleted  ← [THAY ĐỔI 2] thêm "deleted"
+    reject_reason        = Column(NVARCHAR(500), nullable=True)
+    transaction_status   = Column(String(20), default="available")
+    images_json          = Column(Text, default="[]")
     created_at       = Column(DateTime, server_default=func.now(), nullable=False)
 
-    # ── Relationships ────────────────────────────────────────────────────────
-    seller       = relationship("User", back_populates="listings")  # ← THÊM
+    seller       = relationship("User", back_populates="listings")
     chat_requests = relationship(
         "ChatRequest", back_populates="listing", cascade="all, delete-orphan"
     )
 
-    # ── images property (lưu JSON, không dùng bảng riêng) ───────────────────
     @property
     def images(self) -> list:
         try:
@@ -196,6 +206,12 @@ class Rating(Base):
                         nullable=False)
     stars      = Column(Integer, nullable=False)
     comment    = Column(NVARCHAR(500),    nullable=True)
+
+    # [THAY ĐỔI 3] Vai trò của người được đánh giá trong giao dịch này
+    rated_role = Column(String(10), nullable=True)
+    # "seller" = người được đánh giá là người bán
+    # "buyer"  = người được đánh giá là người mua
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     session = relationship("ChatSession", back_populates="ratings")
@@ -214,9 +230,54 @@ class Report(Base):
     reason = Column(NVARCHAR(500), nullable=False)
     detail = Column(NVARCHAR(500), nullable=False)
 
-    status = Column(String, default="pending")
+    status = Column(String(20), default="pending")
     # pending | resolved | rejected
 
     admin_note = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# ══════════════════════════════════════════════════════
+# NOTIFICATION
+# ══════════════════════════════════════════════════════
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type       = Column(String(50), nullable=False)
+    # report_resolved | report_rejected | warn | ban_7days | ban_permanent
+    title      = Column(NVARCHAR(200), nullable=False)
+    body       = Column(NVARCHAR(500), nullable=False)
+    is_read    = Column(Boolean, nullable=False, default=False)
+    ref_id     = Column(Integer, nullable=True)   # report_id nếu liên quan
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+# ══════════════════════════════════════════════════════
+# BAN APPEAL (Khiếu nại khi bị ban)
+# ══════════════════════════════════════════════════════
+
+class BanAppeal(Base):
+    __tablename__ = "ban_appeals"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    # KHÔNG unique → user có thể có nhiều appeal qua các lần ban khác nhau
+    # Logic: mỗi lần ban được khiếu nại 1 lần. Check bằng cách xem
+    # có appeal nào status=pending|rejected cho user đang bị ban không.
+    # Khi gỡ ban → lần ban tiếp theo tạo record mới bình thường.
+
+    reason     = Column(NVARCHAR(1000), nullable=False)
+    # Nội dung khiếu nại của người dùng
+
+    status     = Column(String(20), nullable=False, default="pending")
+    # pending | approved | rejected
+
+    admin_note = Column(NVARCHAR(500), nullable=True)
+    # Ghi chú của admin khi xử lý
+
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
