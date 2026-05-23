@@ -17,6 +17,7 @@ import { getListingById } from '@/lib/Listingapi'
 import { buildImageUrl } from '@/lib/Imageapi'
 import { sendChatRequest, getBuyerRequests, getUserSessions } from '@/lib/Chatapi'
 import { createReport } from '@/lib/Reportapi'
+import { API_URL } from '@/lib/Api'
 
 function getImageUrls(listing) {
   try {
@@ -36,6 +37,11 @@ const REPORT_REASONS = [
 const AVATAR_COLORS = ['#0D9488', '#14B8A6', '#0F766E', '#F59E0B', '#10B981', '#6366F1']
 function avatarColor(name = '') {
   return AVATAR_COLORS[(String(name).charCodeAt(0) || 0) % AVATAR_COLORS.length]
+}
+function buildAvatarUrl(avatarUrl) {
+  if (!avatarUrl) return null
+  if (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:')) return avatarUrl
+  return `${API_URL}/avatars/${avatarUrl}`
 }
 function getInitials(name = '') {
   return name.trim().split(/\s+/).slice(-2).map(w => w[0]?.toUpperCase() || '').join('')
@@ -350,15 +356,25 @@ export default function ListingDetailPage() {
                     className="flex items-center gap-3 group"
                   >
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-heading text-sm font-bold text-white shadow-sm flex-shrink-0"
+                      className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-heading text-sm font-bold text-white shadow-sm flex-shrink-0"
                       style={{ backgroundColor: avatarColor(listing.seller_name) }}
                     >
-                      {getInitials(listing.seller_name)}
+                      {listing.seller_avatar_url
+                        ? <img src={buildAvatarUrl(listing.seller_avatar_url)} alt={listing.seller_name} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
+                        : getInitials(listing.seller_name)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                        {listing.seller_name}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                          {listing.seller_name}
+                        </p>
+
+                        {listing.seller_status === 'banned' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-heading text-[10px] font-semibold border border-red-200 flex-shrink-0">
+                            🚫 Đang bị ban
+                          </span>
+                        )}
+                      </div>
                       {listing.seller_rating != null && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <Star className="h-3 w-3 fill-amber-400 text-amber-400" />

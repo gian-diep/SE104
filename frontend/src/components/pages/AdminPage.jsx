@@ -5,7 +5,7 @@ import {
   AlertTriangle, Eye, LogOut, BarChart3,
   Ban, Trash2, Star, RefreshCw, Search,
   BookOpen, ClipboardList, Banknote, User, Flag, ExternalLink,
-  UserCircle, UserX
+  UserCircle, UserX, MessageSquareWarning, ThumbsUp, ThumbsDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,11 +15,8 @@ import {
   adminGetListings, adminApproveListing, adminRejectListing, adminDeleteListing,
   adminGetUsers, adminBanUser, adminUnbanUser, adminDeleteUser, adminGetReports
 } from '@/lib/Adminapi'
-import {
-  getReports,
-  resolveReport,
-} from '@/lib/Reportapi'
-
+import { getReports, resolveReport, punishUserFromReport } from '@/lib/Reportapi'
+import { getAppeals, reviewAppeal } from '@/lib/Appealapi'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getImageUrl(imageId) {
   if (!imageId) return null
@@ -428,10 +425,56 @@ function ReportStatusPill({ resolved }) {
   )
 }
 // ─── Report Card ──────────────────────────────────────────────────────────────
-function ReportCard({ report, onResolve }) {
+function ReportCard({ report, onResolve, onPunish }) {
   const resolved = report.status === 'resolved'
   const rating = Number(report.reported_user_rating ?? 0)
   const isHighRisk = rating < 2 && !resolved
+ 
+  // State cho modal xử phạt
+  const [punishOpen, setPunishOpen] = useState(false)
+  const [punishAction, setPunishAction] = useState('')
+  const [punishNote, setPunishNote] = useState('')
+  const [punishBusy, setPunishBusy] = useState(false)
+ 
+  const handlePunish = async () => {
+    if (!punishAction) {
+      alert('Vui lòng chọn hành động')
+      return
+    }
+
+    setPunishBusy(true)
+
+    try {
+      await punishUserFromReport(
+        report.id,
+        punishAction,
+        punishNote
+      )
+
+      setPunishOpen(false)
+      setPunishNote('')
+      setPunishAction('')
+
+      onPunish?.(report.id)
+    } catch (e) {
+      alert('Lỗi: ' + e.message)
+    } finally {
+      setPunishBusy(false)
+    }
+  }
+ 
+  // Hiển thị trạng thái ban hiện tại của người bị report
+  const getBanLabel = () => {
+    if (report.reported_user_status === 'banned') {
+      if (report.reported_user_ban_until) {
+        const until = new Date(report.reported_user_ban_until)
+        return `Đang bị ban đến ${until.toLocaleDateString('vi-VN')}`
+      }
+      return 'Đang bị ban vĩnh viễn'
+    }
+    return null
+  }
+  const banLabel = getBanLabel()
  
   return (
     <div
@@ -445,7 +488,6 @@ function ReportCard({ report, onResolve }) {
         }
       `}
     >
-      {/* High-risk accent bar */}
       {isHighRisk && (
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />
       )}
@@ -454,7 +496,6 @@ function ReportCard({ report, onResolve }) {
         {/* Header row */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
-            {/* Flag icon */}
             <div
               className={`
                 mt-0.5 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-sm
@@ -468,7 +509,6 @@ function ReportCard({ report, onResolve }) {
             </div>
  
             <div className="min-w-0">
-              {/* Reason + detail label */}
               <div className="mb-1">
                 <span className="text-[10px] font-heading uppercase tracking-widest text-muted-foreground mr-2">
                   Lý do:
@@ -478,38 +518,35 @@ function ReportCard({ report, onResolve }) {
                 </span>
               </div>
  
-              {/* Reported user */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground">
-                  Người bị report:
-                </span>
-                <span className="text-xs font-medium text-foreground">
-                  {report.reported_username}
-                </span>
+                <span className="text-xs text-muted-foreground">Người bị report:</span>
+                <span className="text-xs font-medium text-foreground">{report.reported_username}</span>
                 <span className="text-muted-foreground/40 text-xs">·</span>
                 <RatingStars value={rating} />
+                {/* Hiển thị trạng thái ban hiện tại */}
+                {banLabel && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest bg-red-500/10 text-red-600 border border-red-500/20">
+                    <Ban className="w-3 h-3" />
+                    {banLabel}
+                  </span>
+                )}
               </div>
             </div>
           </div>
  
-          {/* Status pill */}
           <div className="flex-shrink-0">
             <ReportStatusPill resolved={resolved} />
           </div>
         </div>
  
-        {/* Divider */}
         <div className="border-t border-secondary/60 mb-4" />
-        {/* Divider */}
-        <div className="border-t border-secondary/60 mb-4" />
-
+ 
         {/* Report detail */}
         {report.detail && (
           <div className="mb-4">
             <p className="text-[11px] font-heading uppercase tracking-widest text-muted-foreground mb-2">
               Nội dung báo cáo
             </p>
-
             <div className="border border-secondary bg-secondary/10 px-4 py-3">
               <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {report.detail}
@@ -517,20 +554,22 @@ function ReportCard({ report, onResolve }) {
             </div>
           </div>
         )}
-        
+ 
+        {/* Admin note nếu có */}
+        {report.admin_note && (
+          <div className="mb-4 px-3 py-2 border border-secondary/40 bg-secondary/10">
+            <p className="text-[10px] font-heading uppercase tracking-widest text-muted-foreground mb-1">Ghi chú admin</p>
+            <p className="text-xs text-foreground">{report.admin_note}</p>
+          </div>
+        )}
+ 
         {/* Action row */}
         <div className="flex items-center gap-2 flex-wrap">
           {report.listing_id && (
             <Link
               to={`/listings/${report.listing_id}`}
               target="_blank"
-              className="
-                inline-flex items-center gap-1.5
-                px-3 py-1.5 border border-secondary
-                text-[11px] font-heading uppercase tracking-widest
-                text-muted-foreground hover:text-foreground hover:border-foreground/30
-                transition-colors duration-150
-              "
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-secondary text-[11px] font-heading uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors duration-150"
             >
               <ExternalLink className="w-3 h-3" />
               Xem bài đăng
@@ -540,29 +579,27 @@ function ReportCard({ report, onResolve }) {
           <Link
             to={`/nguoi-dung/${report.reported_user_id}`}
             target="_blank"
-            className="
-              inline-flex items-center gap-1.5
-              px-3 py-1.5 border border-secondary
-              text-[11px] font-heading uppercase tracking-widest
-              text-muted-foreground hover:text-foreground hover:border-foreground/30
-              transition-colors duration-150
-            "
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-secondary text-[11px] font-heading uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors duration-150"
           >
             <UserCircle className="w-3 h-3" />
             Xem tài khoản
           </Link>
  
+          {/* [THAY ĐỔI 1] Nút xử phạt */}
+          {!resolved && (
+            <button
+              onClick={() => setPunishOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-orange-500/40 bg-orange-500/5 text-[11px] font-heading uppercase tracking-widest text-orange-600 hover:bg-orange-500/10 hover:border-orange-500/60 transition-all duration-150"
+            >
+              <AlertTriangle className="w-3 h-3" />
+              Xử phạt
+            </button>
+          )}
+ 
           {!resolved && (
             <button
               onClick={() => onResolve(report.id)}
-              className="
-                ml-auto inline-flex items-center gap-1.5
-                px-3 py-1.5
-                border border-green-500/40 bg-green-500/5
-                text-[11px] font-heading uppercase tracking-widest text-green-600
-                hover:bg-green-500/10 hover:border-green-500/60
-                transition-all duration-150
-              "
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 border border-green-500/40 bg-green-500/5 text-[11px] font-heading uppercase tracking-widest text-green-600 hover:bg-green-500/10 hover:border-green-500/60 transition-all duration-150"
             >
               <CheckCircle className="w-3 h-3" />
               Đánh dấu xử lý
@@ -570,6 +607,95 @@ function ReportCard({ report, onResolve }) {
           )}
         </div>
       </div>
+ 
+      {/* [THAY ĐỔI 1] Modal xử phạt */}
+      {punishOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-2xl">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 via-red-500 to-orange-500" />
+ 
+            <div className="px-7 pt-7 pb-5 border-b border-orange-100">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100">
+                  <AlertTriangle className="h-6 w-6 text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="font-heading text-lg uppercase tracking-wide text-gray-900">Xử phạt người dùng</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Tài khoản: <span className="font-medium text-foreground">{report.reported_username}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+ 
+            <div className="px-7 py-6 space-y-4">
+              {/* Chọn hành động */}
+              <div>
+                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-3">Chọn hình thức xử phạt</p>
+                <div className="space-y-2">
+                  {[
+                    { value: 'warn', label: '⚠️ Gửi cảnh cáo', desc: 'Không hạn chế tài khoản, chỉ ghi nhận vi phạm' },
+                    { value: 'ban_7days', label: '🚫 Ban 7 ngày', desc: 'Tài khoản bị hạn chế trong 7 ngày' },
+                    { value: 'ban_permanent', label: '⛔ Ban vĩnh viễn', desc: 'Tài khoản bị khoá không thời hạn' },
+                  ].map(opt => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
+                        punishAction === opt.value
+                          ? 'border-orange-400 bg-orange-50'
+                          : 'border-gray-200 hover:border-orange-200 hover:bg-orange-50/50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="punishAction"
+                        value={opt.value}
+                        checked={punishAction === opt.value}
+                        onChange={() => setPunishAction(opt.value)}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <p className="text-sm font-heading uppercase tracking-wide text-gray-900">{opt.label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+ 
+              {/* Ghi chú */}
+              <div>
+                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-2">
+                  Ghi chú nội bộ <span className="text-muted-foreground/50">(tuỳ chọn)</span>
+                </p>
+                <textarea
+                  value={punishNote}
+                  onChange={e => setPunishNote(e.target.value)}
+                  placeholder="Lý do xử phạt, bằng chứng vi phạm..."
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400/40 focus:border-orange-400"
+                />
+              </div>
+            </div>
+ 
+            <div className="flex gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+              <button
+                onClick={() => { setPunishOpen(false); setPunishAction(''); setPunishNote('') }}
+                className="flex-1 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handlePunish}
+                disabled={!punishAction || punishBusy}
+                className="flex-1 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {punishBusy ? 'Đang xử lý...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -621,6 +747,14 @@ function ReportTab() {
         r.id === reportId
           ? { ...r, status: 'resolved' }
           : r
+      )
+    )
+  }
+
+  const handlePunish = (reportId) => {
+    setReports(prev =>
+      prev.map(r =>
+        r.id === reportId ? { ...r, status: 'resolved' } : r
       )
     )
   }
@@ -702,6 +836,7 @@ function ReportTab() {
               key={report.id}
               report={report}
               onResolve={updateStatus}
+              onPunish={handlePunish}
             />
           ))}
         </div>
@@ -966,6 +1101,222 @@ function UsersTab() {
 }
 
 // ══════════════════════════════════════════════════════════
+// APPEAL TAB
+// ══════════════════════════════════════════════════════════
+function AppealTab({ onCountChange }) {
+  const [appeals, setAppeals] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all') // 'all' | 'pending' | 'approved' | 'rejected'
+  const [reviewOpen, setReviewOpen] = useState({})
+  const [reviewNote, setReviewNote] = useState({})
+  const [busy, setBusy] = useState({})
+  const [error, setError] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const data = await getAppeals()
+      setAppeals(data)
+      onCountChange?.(data.filter(a => a.status === 'pending').length)
+    } catch {
+      setError('Không thể tải danh sách khiếu nại')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const handleReview = async (appealId, action) => {
+    setBusy(b => ({ ...b, [appealId]: true }))
+    try {
+      await reviewAppeal(appealId, { action, note: reviewNote[appealId] || '' })
+      setAppeals(prev => prev.map(a =>
+        a.id === appealId ? { ...a, status: action === 'approve' ? 'approved' : 'rejected', admin_note: reviewNote[appealId] || '' } : a
+      ))
+      onCountChange?.(appeals.filter(a => a.status === 'pending' && a.id !== appealId).length)
+      setReviewOpen(r => ({ ...r, [appealId]: false }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(b => ({ ...b, [appealId]: false }))
+    }
+  }
+
+  const filtered = filter === 'all' ? appeals : appeals.filter(a => a.status === filter)
+
+  const STATUS_STYLES = {
+    pending:  { bg: 'bg-yellow-100 text-yellow-700',  label: 'Đang chờ' },
+    approved: { bg: 'bg-green-100  text-green-700',   label: 'Đã chấp thuận' },
+    rejected: { bg: 'bg-red-100    text-red-700',     label: 'Đã từ chối' },
+  }
+
+  if (loading) return (
+    <div className="flex justify-center items-center py-20">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  return (
+    <div className="space-y-6">
+      {error && (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl">{error}</div>
+      )}
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {[
+          { id: 'all',      label: 'Tất cả',        count: appeals.length },
+          { id: 'pending',  label: 'Chờ xét duyệt', count: appeals.filter(a => a.status === 'pending').length },
+          { id: 'approved', label: 'Đã chấp thuận', count: appeals.filter(a => a.status === 'approved').length },
+          { id: 'rejected', label: 'Đã từ chối',    count: appeals.filter(a => a.status === 'rejected').length },
+        ].map(f => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading transition-all
+              ${filter === f.id ? 'bg-primary text-primary-foreground shadow-btn' : 'bg-surface text-muted-foreground hover:text-foreground border border-secondary'}`}
+          >
+            {f.label}
+            {f.count > 0 && (
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-sm ${filter === f.id ? 'bg-white/20 text-white' : 'bg-secondary'}`}>
+                {f.count}
+              </span>
+            )}
+          </button>
+        ))}
+        <button onClick={load} className="ml-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-secondary text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+        </button>
+      </div>
+
+      {/* Empty state */}
+      {filtered.length === 0 && (
+        <div className="text-center py-20 text-muted-foreground font-paragraph">
+          <MessageSquareWarning className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">Không có khiếu nại nào</p>
+        </div>
+      )}
+
+      {/* Appeal cards */}
+      <div className="space-y-4">
+        {filtered.map(appeal => {
+          const st = STATUS_STYLES[appeal.status] || STATUS_STYLES.pending
+          const isPending = appeal.status === 'pending'
+          const isOpen = reviewOpen[appeal.id]
+
+          return (
+            <div key={appeal.id} className="bg-surface border border-secondary rounded-2xl overflow-hidden">
+              <div className="p-6 space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    {appeal.avatar_url ? (
+                      <img src={appeal.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <UserCircle className="h-5 w-5 text-primary" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-heading font-semibold text-sm text-foreground">{appeal.username}</p>
+                      <p className="font-paragraph text-xs text-muted-foreground">{appeal.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${st.bg}`}>{st.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(appeal.created_at).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Ban info */}
+                <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl">
+                  <Ban className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                  <p className="font-paragraph text-xs text-red-700">
+                    {appeal.ban_until
+                      ? <>Bị khóa đến <span className="font-semibold">{new Date(appeal.ban_until).toLocaleDateString('vi-VN')}</span></>
+                      : 'Bị khóa vĩnh viễn'}
+                  </p>
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-1.5">Nội dung khiếu nại</p>
+                  <p className="font-paragraph text-sm text-foreground leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
+                </div>
+
+                {/* Admin note nếu đã xử lý */}
+                {appeal.admin_note && (
+                  <div className="px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p className="font-heading text-xs uppercase tracking-widest text-blue-600 mb-1">Phản hồi Admin</p>
+                    <p className="font-paragraph text-sm text-blue-800">{appeal.admin_note}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {isPending && (
+                  <div>
+                    {!isOpen ? (
+                      <button
+                        onClick={() => setReviewOpen(r => ({ ...r, [appeal.id]: true }))}
+                        className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-heading text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shadow-btn"
+                      >
+                        Xem xét khiếu nại
+                      </button>
+                    ) : (
+                      <div className="space-y-3 pt-2 border-t border-secondary">
+                        <div className="space-y-1.5">
+                          <label className="font-heading text-xs uppercase tracking-widest text-muted-foreground">
+                            Ghi chú phản hồi (tuỳ chọn)
+                          </label>
+                          <textarea
+                            value={reviewNote[appeal.id] || ''}
+                            onChange={e => setReviewNote(n => ({ ...n, [appeal.id]: e.target.value }))}
+                            placeholder="Nhập lý do chấp thuận hoặc từ chối..."
+                            rows={3}
+                            className="w-full rounded-xl border border-secondary bg-background font-paragraph text-sm px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleReview(appeal.id, 'approve')}
+                            disabled={busy[appeal.id]}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white font-heading text-xs uppercase tracking-widest hover:bg-green-700 transition-colors disabled:opacity-60"
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                            {busy[appeal.id] ? 'Đang xử lý...' : 'Chấp thuận & Gỡ ban'}
+                          </button>
+                          <button
+                            onClick={() => handleReview(appeal.id, 'reject')}
+                            disabled={busy[appeal.id]}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 text-white font-heading text-xs uppercase tracking-widest hover:bg-red-700 transition-colors disabled:opacity-60"
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                            {busy[appeal.id] ? 'Đang xử lý...' : 'Từ chối'}
+                          </button>
+                          <button
+                            onClick={() => setReviewOpen(r => ({ ...r, [appeal.id]: false }))}
+                            className="px-4 py-2.5 rounded-xl border border-secondary text-muted-foreground font-heading text-xs uppercase tracking-widest hover:text-foreground transition-colors"
+                          >
+                            Huỷ
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════
 // MAIN
 // ══════════════════════════════════════════════════════════
   export default function AdminPage() {
@@ -981,6 +1332,7 @@ function UsersTab() {
     })
     const [reportCount, setReportCount] = useState(0)  // ← THÊM
     const [userCount, setUserCount]     = useState(0)  // ← THÊM
+    const [appealCount, setAppealCount] = useState(0)  // ← THÊM
 
     const handleListingsLoaded = useCallback((listings) => {
       setStats({
@@ -994,6 +1346,9 @@ function UsersTab() {
     useEffect(() => {
       getReports()
         .then(data => setReportCount(data.filter(r => r.status !== 'resolved').length))
+        .catch(() => {})
+      getAppeals()
+        .then(data => setAppealCount(data.filter(a => a.status === 'pending').length))
         .catch(() => {})
       adminGetUsers()
         .then(data => setUserCount(data.length))
@@ -1032,9 +1387,10 @@ function UsersTab() {
 
 
   const TABS = [
-    { id: 'moderation', label: 'Kiểm duyệt', icon: FileText,      badge: stats.pending },
-    { id: 'reports',    label: 'Báo cáo',     icon: AlertTriangle, badge: reportCount   },
-    { id: 'users',      label: 'Người dùng',  icon: Users,         badge: userCount     },
+    { id: 'moderation', label: 'Kiểm duyệt', icon: FileText,              badge: stats.pending },
+    { id: 'reports',    label: 'Báo cáo',     icon: AlertTriangle,         badge: reportCount   },
+    { id: 'appeals',    label: 'Khiếu nại',   icon: MessageSquareWarning,  badge: appealCount   },
+    { id: 'users',      label: 'Người dùng',  icon: Users,                 badge: userCount     },
     ]
 
   return (
@@ -1127,6 +1483,7 @@ function UsersTab() {
 
         {activeTab === 'moderation' && (<ModerationTab onStatsChange={handleListingsLoaded}/>)}
         {activeTab === 'reports' && (<ReportTab />)}
+        {activeTab === 'appeals' && (<AppealTab onCountChange={setAppealCount} />)}
         {activeTab === 'users' && (<UsersTab />)}
       </div>
     </div>

@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
 import { getListings } from '@/lib/ListingApi'
 import { buildImageUrl } from '@/lib/Imageapi'
+import { API_URL } from '@/lib/Api'
 import { getUser, getUsers } from '@/lib/Userapi'
 
 const CATEGORIES = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
@@ -103,12 +104,10 @@ function getInitials(name = '') {
   return name.trim().split(/\s+/).slice(-2).map(w => w[0]?.toUpperCase() || '').join('')
 }
 
-function getSellerRating(sellerId) {
-  try {
-    const users = JSON.parse(localStorage.getItem('bookycle_users') || '[]')
-    const user = users.find(u => u.id === sellerId)
-    return user?.rating ?? null
-  } catch { return null }
+function buildAvatarUrl(avatarUrl) {
+  if (!avatarUrl) return null
+  if (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:')) return avatarUrl
+  return `${API_URL}/avatars/${avatarUrl}`
 }
 
 const AVATAR_COLORS = ['#0D9488', '#14B8A6', '#0F766E', '#F59E0B', '#10B981', '#6366F1']
@@ -161,9 +160,10 @@ function FeatureChip({ icon: Icon, label, color = 'teal' }) {
   )
 }
 
-function ListingCardCompact({ listing }) {
+function ListingCardCompact({ listing, seller }) {
   const imgUrl = getListingImage(listing)
   const isFree = listing.item_price === 0
+  const avatarSrc = buildAvatarUrl(listing.seller_avatar_url || seller?.avatar_url)
   return (
     <Link to={`/listings/${listing.id}`} className="block group flex-shrink-0 w-80">
       <div className="bg-white rounded-2xl border border-teal-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden">
@@ -184,9 +184,11 @@ function ListingCardCompact({ listing }) {
             {listing.item_name}
           </h3>
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center font-heading text-[8px] font-bold text-white"
+            <div className="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center font-heading text-[8px] font-bold text-white"
               style={{ backgroundColor: avatarColor(listing.seller_name) }}>
-              {getInitials(listing.seller_name)}
+              {avatarSrc
+                ? <img src={avatarSrc} alt={listing.seller_name} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display='none' }} />
+                : getInitials(listing.seller_name)}
             </div>
             <span className="font-paragraph text-[10px] text-muted-foreground truncate">{listing.seller_name || 'Ẩn danh'}</span>
           </div>
@@ -196,7 +198,7 @@ function ListingCardCompact({ listing }) {
   )
 }
 
-function ListingCard({ listing, index }) {
+function ListingCard({ listing, index, seller }) {
   const imgUrl = getListingImage(listing)
   const isFree = listing.item_price === 0
   return (
@@ -243,21 +245,20 @@ function ListingCard({ listing, index }) {
             )}
             <div className="mt-auto pt-3 border-t border-teal-50 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center font-heading text-[10px] font-bold text-white shadow-sm"
+                <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center font-heading text-[10px] font-bold text-white shadow-sm"
                   style={{ backgroundColor: avatarColor(listing.seller_name) }}>
-                  {getInitials(listing.seller_name)}
+                  {(listing.seller_avatar_url || seller?.avatar_url)
+                    ? <img src={buildAvatarUrl(listing.seller_avatar_url || seller?.avatar_url)} alt={listing.seller_name} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display='none' }} />
+                    : getInitials(listing.seller_name)}
                 </div>
                 <span className="font-paragraph text-xs text-muted-foreground truncate">{listing.seller_name || 'Ẩn danh'}</span>
               </div>
-              {(() => {
-                const r = getSellerRating(listing.seller_id)
-                return r !== null ? (
-                  <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 px-2 py-0.5 rounded-full">
-                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                    <span className="font-heading text-[11px] font-bold text-amber-600">{r.toFixed(1)}</span>
-                  </div>
-                ) : null
-              })()}
+              {(listing.seller_rating != null || seller?.rating != null) && (
+                <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <span className="font-heading text-[11px] font-bold text-amber-600">{Number(listing.seller_rating ?? seller?.rating).toFixed(1)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -274,14 +275,23 @@ function UserCard({ user, index }) {
       <Link to={`/nguoi-dung/${user.id}`} className="block group">
         <div className="bg-white rounded-2xl border border-teal-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 p-5">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center font-heading text-lg font-black text-white shadow-sm"
+            <div className="w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center font-heading text-lg font-black text-white shadow-sm"
               style={{ backgroundColor: avatarColor(user.username) }}>
-              {getInitials(user.username)}
+              {user.avatar_url
+                ? <img src={buildAvatarUrl(user.avatar_url)} alt={user.username} className="w-full h-full object-cover rounded-2xl" onError={e => { e.currentTarget.style.display='none' }} />
+                : getInitials(user.username)}
             </div>
             <div className="min-w-0">
-              <h3 className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                {user.username || 'Ẩn danh'}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                  {user.username || 'Ẩn danh'}
+                </h3>
+                {user.status === 'banned' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-heading text-[10px] font-semibold border border-red-200 flex-shrink-0">
+                    🚫 Đang bị ban
+                  </span>
+                )}
+              </div>
               {user.university && (
                 <p className="font-paragraph text-xs text-muted-foreground truncate mt-0.5">{user.university}</p>
               )}
@@ -302,7 +312,7 @@ function UserCard({ user, index }) {
   )
 }
 
-function HorizontalSection({ title, icon: Icon, items, onViewAll, accentColor = 'teal', emptyText = 'Không có tài liệu' }) {
+function HorizontalSection({ title, icon: Icon, items, onViewAll, accentColor = 'teal', emptyText = 'Không có tài liệu', usersMap = {} }) {
   const colorMap = {
     teal:    { badge: 'bg-teal-50 text-teal-700 border-teal-200',     icon: 'text-primary',    link: 'text-primary hover:text-primary/80' },
     amber:   { badge: 'bg-amber-50 text-amber-700 border-amber-200',   icon: 'text-amber-500',  link: 'text-amber-600 hover:text-amber-700' },
@@ -333,7 +343,7 @@ function HorizontalSection({ title, icon: Icon, items, onViewAll, accentColor = 
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-3 px-6 md:px-16 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {items.map(listing => <ListingCardCompact key={listing.id} listing={listing} />)}
+          {items.map(listing => <ListingCardCompact key={listing.id} listing={listing} seller={usersMap[listing.seller_id]} />)}
           <button
             onClick={onViewAll}
             className="flex-shrink-0 w-36 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-teal-200 hover:border-primary hover:bg-teal-50/50 transition-all group cursor-pointer"
@@ -415,7 +425,25 @@ export default function HomePage() {
     loadData()
   }, [])
 
-  const approvedListings = listings.filter(l => l.status === 'approved' && l.transaction_status === 'available')
+  const usersMap = useMemo(() => {
+    const m = {}
+    users.forEach(u => { m[u.id] = u })
+    return m
+  }, [users])
+
+  // Lọc bỏ listing của user đang bị ban (dựa vào usersMap đã có status)
+  const isSellerActive = (listing) => {
+    const seller = usersMap[listing.seller_id]
+    // Nếu chưa load xong usersMap thì tạm cho qua, khi load xong sẽ tự recompute
+    if (!seller) return true
+    return seller.status !== 'banned'
+  }
+
+  const approvedListings = listings.filter(l =>
+    l.status === 'approved' &&
+    l.transaction_status === 'available' &&
+    isSellerActive(l)
+  )
   const bookListing = listings.filter(l => l.status === 'approved')
 
   const applyPriceFilter = useCallback((list, filter) => {
@@ -592,16 +620,16 @@ export default function HomePage() {
 
       {/* HORIZONTAL SECTIONS */}
       <div className="py-10">
-        <HorizontalSection title="Mới đăng" icon={Clock} items={recentListings} onViewAll={() => goToSearch()} accentColor="teal" emptyText="Chưa có tài liệu mới" />
-        <HorizontalSection title="Miễn phí" icon={Gift} items={freeListings} onViewAll={() => goToSearch('free')} accentColor="emerald" emptyText="Chưa có tài liệu miễn phí" />
+        <HorizontalSection title="Mới đăng" icon={Clock} items={recentListings} usersMap={usersMap} onViewAll={() => goToSearch()} accentColor="teal" emptyText="Chưa có tài liệu mới" />
+        <HorizontalSection title="Miễn phí" icon={Gift} items={freeListings} usersMap={usersMap} onViewAll={() => goToSearch('free')} accentColor="emerald" emptyText="Chưa có tài liệu miễn phí" />
         {giaoTrinhListings.length > 0 && (
-          <HorizontalSection title="Giáo trình" icon={GraduationCap} items={giaoTrinhListings} onViewAll={() => goToSearch('all','Giáo trình')} accentColor="amber" emptyText="Chưa có giáo trình" />
+          <HorizontalSection title="Giáo trình" icon={GraduationCap} items={giaoTrinhListings} usersMap={usersMap} onViewAll={() => goToSearch('all','Giáo trình')} accentColor="amber" emptyText="Chưa có giáo trình" />
         )}
         {sachListings.length > 0 && (
-          <HorizontalSection title="Sách" icon={BookOpen} items={sachListings} onViewAll={() => goToSearch('all', 'Sách')} accentColor="teal" emptyText="Chưa có sách" />
+          <HorizontalSection title="Sách" icon={BookOpen} items={sachListings} usersMap={usersMap} onViewAll={() => goToSearch('all', 'Sách')} accentColor="teal" emptyText="Chưa có sách" />
         )}
         {onlineListings.length > 0 && (
-          <HorizontalSection title="Tài liệu Online" icon={Layers} items={onlineListings} onViewAll={() => goToSearch('all','Tài liệu online')} accentColor="emerald" emptyText="Chưa có tài liệu online" />
+          <HorizontalSection title="Tài liệu Online" icon={Layers} items={onlineListings} usersMap={usersMap} onViewAll={() => goToSearch('all','Tài liệu online')} accentColor="emerald" emptyText="Chưa có tài liệu online" />
         )}
       </div>
 
@@ -734,7 +762,7 @@ export default function HomePage() {
                   ) : filteredListings.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                       <AnimatePresence mode="popLayout">
-                        {filteredListings.map((listing, index) => <ListingCard key={listing.id} listing={listing} index={index} />)}
+                        {filteredListings.map((listing, index) => <ListingCard key={listing.id} listing={listing} index={index} seller={usersMap[listing.seller_id]} />)}
                       </AnimatePresence>
                     </div>
                   ) : (

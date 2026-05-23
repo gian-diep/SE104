@@ -257,6 +257,34 @@ function RatingsModal({ userId, onClose }) {
                           </span>
                         </div>
 
+                        {r.rated_role && (
+                          <div className="mb-2">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
+                                r.rated_role === 'seller'
+                                  ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                  : 'bg-purple-50 text-purple-600 border-purple-200'
+                              }`}
+                            >
+                              {r.rated_role === 'seller' ? (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
+                                  </svg>
+                                  Đánh giá với tư cách Người bán
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                  </svg>
+                                  Đánh giá với tư cách Người mua
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Stars */}
                         <div className="flex items-center gap-0.5 mb-3">
                           {[1, 2, 3, 4, 5].map(s => (
@@ -408,6 +436,16 @@ export default function UserProfilePage() {
             <p className="font-heading text-lg font-bold text-muted-foreground">Không tìm thấy người dùng</p>
             <p className="font-paragraph text-sm text-muted-foreground">{load_error}</p>
           </div>
+
+        ) : profile_data?.status === 'banned' ? (
+          <div className="py-24 flex flex-col items-center justify-center bg-white rounded-3xl border border-dashed border-red-200 text-center gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+              <span className="text-3xl">🚫</span>
+            </div>
+            <p className="font-heading text-lg font-bold text-foreground">Tài khoản này đang bị hạn chế</p>
+            <p className="font-paragraph text-sm text-muted-foreground">Người dùng đã vi phạm chính sách cộng đồng.</p>
+          </div>
+
         ) : profile_data ? (
           <>
             {/* Profile card */}
@@ -427,12 +465,20 @@ export default function UserProfilePage() {
                         src={avatar_src}
                         alt={profile_data.username}
                         className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-card"
-                        onError={e => { e.target.style.display = 'none'; e.target.nextSibling?.style.removeProperty('display') }}
+                        onError={e => {
+                          e.currentTarget.style.display = 'none'
+                          const fallback = e.currentTarget.parentElement.querySelector('[data-avatar-fallback]')
+                          if (fallback) fallback.style.display = 'flex'
+                        }}
                       />
                     ) : null}
                     <div
-                      className={`w-20 h-20 rounded-full border-4 border-white shadow-card flex items-center justify-center font-heading text-2xl font-black text-white ${avatar_src ? 'hidden' : ''}`}
-                      style={{ backgroundColor: avatarColor(profile_data.username) }}
+                      data-avatar-fallback
+                      className="w-20 h-20 rounded-full border-4 border-white shadow-card items-center justify-center font-heading text-2xl font-black text-white"
+                      style={{
+                        backgroundColor: avatarColor(profile_data.username),
+                        display: avatar_src ? 'none' : 'flex',
+                      }}
                     >
                       {getInitials(profile_data.username)}
                     </div>
@@ -440,16 +486,17 @@ export default function UserProfilePage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0 pt-0 sm:pt-6">
-                    <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-white drop-shadow-md -mt-10 sm:-mt-10 mb-8 relative z-20">
-                      {profile_data.username}
-                    </h1>
+                    <div className="flex items-center gap-3 flex-wrap -mt-10 sm:-mt-10 mb-8 relative z-20">
+                      <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-white drop-shadow-md">
+                        {profile_data.username}
+                      </h1>
+                    </div>
                     {profile_data.university && (
                       <div className="flex items-center gap-1.5 text-sm font-paragraph text-muted-foreground mb-3">
                         <GraduationCap className="h-4 w-4 flex-shrink-0 text-primary" />
                         {profile_data.university}
                       </div>
                     )}
-                    {/* ✅ Use profile_data (not currentUser), wire onClick */}
                     <StarRating
                       rating={profile_data.rating ?? 0}
                       count={profile_data.rating_count ?? 0}
@@ -508,7 +555,7 @@ export default function UserProfilePage() {
 
       <Footer />
 
-      {/* ✅ Ratings modal */}
+      {/* Ratings modal */}
       <AnimatePresence>
         {showRatings && (
           <RatingsModal userId={user_id} onClose={() => setShowRatings(false)} />

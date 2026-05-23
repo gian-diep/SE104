@@ -84,6 +84,7 @@ function StarRating({ rating, count, onClick }) {
       </div>
       {onClick ? (
         <button
+          type="button"
           onClick={onClick}
           className="font-paragraph text-sm text-muted-foreground hover:text-primary hover:underline transition-colors"
         >
@@ -216,6 +217,34 @@ function RatingsModal({ userId, onClose }) {
                           {new Date(r.created_at).toLocaleDateString('vi-VN')}
                         </span>
                       </div>
+
+                      {r.rated_role && (
+                          <div className="mb-2">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
+                                r.rated_role === 'seller'
+                                  ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                  : 'bg-purple-50 text-purple-600 border-purple-200'
+                              }`}
+                            >
+                              {r.rated_role === 'seller' ? (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
+                                  </svg>
+                                  Đánh giá với tư cách Người bán
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                  </svg>
+                                  Đánh giá với tư cách Người mua
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        )}
 
                       {/* Stars */}
                       <div className="flex items-center gap-0.5 mb-3">
@@ -484,6 +513,7 @@ export default function AccountPage() {
   const [username, setUsername]           = useState('')
   const [university, setUniversity]       = useState('')
   const [password, setPassword]           = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [avatarFile, setAvatarFile]       = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [message, setMessage]             = useState('')
@@ -491,6 +521,15 @@ export default function AccountPage() {
 
   // ✅ showRatings state — controls the modal
   const [showRatings, setShowRatings] = useState(false)
+
+  // Rating từ API (luôn fresh, không phụ thuộc localStorage)
+  const [ratingData, setRatingData] = useState(null)
+  useEffect(() => {
+    if (!currentUser?.id) return
+    getUserRatings(currentUser.id)
+      .then(setRatingData)
+      .catch(() => {})
+  }, [currentUser?.id])
 
   useEffect(() => {
     if (currentUser) {
@@ -545,12 +584,13 @@ export default function AccountPage() {
         avatarUrl = res.avatar_id
       }
       await updateProfile({
-        username:   username.trim() || undefined,
-        university: university.trim() || undefined,
-        avatar_url: avatarUrl,
-        password:   password || undefined,
+        username:         username.trim() || undefined,
+        university:       university.trim() || undefined,
+        avatar_url:       avatarUrl,
+        current_password: password ? currentPassword || undefined : undefined,
+        password:         password || undefined,
       })
-      setMessage('Cập nhật thành công'); setPassword(''); setAvatarFile(null)
+      setMessage('Cập nhật thành công'); setPassword(''); setCurrentPassword(''); setAvatarFile(null)
     } catch (err) {
       setMessage(err.message || 'Lỗi khi cập nhật')
     } finally {
@@ -683,6 +723,11 @@ const handleDeleteListing = (listing) => {
                           className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
                           style={{ backgroundColor: avatarColor(currentUser?.username) }}
                         >
+                          {user.status === 'banned' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-heading text-[10px] font-semibold border border-red-200 flex-shrink-0">
+                              🚫 Đang bị ban
+                            </span>
+                          )}
                           {getInitials(currentUser?.username)}
                         </div>
                       )}
@@ -707,8 +752,8 @@ const handleDeleteListing = (listing) => {
 
                 {/* ✅ onClick opens RatingsModal */}
                 <StarRating
-                  rating={currentUser.rating ?? 0}
-                  count={currentUser.rating_count ?? 0}
+                  rating={ratingData?.rating ?? currentUser.rating ?? 0}
+                  count={ratingData?.rating_count ?? currentUser.rating_count ?? 0}
                   onClick={() => setShowRatings(true)}
                 />
               </div>
@@ -741,6 +786,15 @@ const handleDeleteListing = (listing) => {
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Để trống nếu không đổi"
                   className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
               </div>
+
+              {password && (
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại *</label>
+                  <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Nhập mật khẩu hiện tại để xác nhận"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                  <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc khi đổi mật khẩu mới</p>
+                </div>
+              )}
 
               {message && (
                 <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-paragraph text-sm ${
