@@ -424,9 +424,10 @@ def rate_user(
     if session.close_reason != "completed":
         raise HTTPException(status_code=400, detail="Chỉ được đánh giá sau khi hoàn tất giao dịch")
 
-    # Xác định người được rate
+    # Xác định người được rate và vai trò của họ
     if body.rater_id == session.buyer_id:
         rated_id = session.seller_id
+        rated_role = "seller"  # người được đánh giá là người bán
 
         if session.buyer_rated:
             raise HTTPException(status_code=400, detail="Bạn đã đánh giá rồi")
@@ -435,6 +436,7 @@ def rate_user(
 
     elif body.rater_id == session.seller_id:
         rated_id = session.buyer_id
+        rated_role = "buyer"  # người được đánh giá là người mua
 
         if session.seller_rated:
             raise HTTPException(status_code=400, detail="Bạn đã đánh giá rồi")
@@ -451,6 +453,7 @@ def rate_user(
         rated_id=rated_id,
         stars=body.stars,
         comment=body.comment,
+        rated_role=rated_role,
     )
 
     db.add(rating)
@@ -470,4 +473,3 @@ def rate_user(
         "rating": user.rating,
         "rating_count": user.rating_count,
     }
-

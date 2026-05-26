@@ -35,6 +35,7 @@ def _to_out(listing) -> ListingOut:
         images=listing.images,   # ← đọc qua property, trả list[str]
         seller_rating=listing.seller.rating if listing.seller else 0,
         seller_rating_count=listing.seller.rating_count if listing.seller else 0,
+        seller_avatar_url=listing.seller.avatar_url if listing.seller else None,
         reject_reason=listing.reject_reason,
     )
 
