@@ -5,8 +5,8 @@ import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/modals/AuthModal'
 import { Image } from '@/components/ui/image'
 import logo from '@/logo.png'
-import { API_URL } from '@/lib/Api'
-import { getNotifications, markAllRead, markOneRead } from '@/lib/Notificationapi'
+import { API_URL } from '@/lib/Api.js'
+import { getNotifications, markAllRead, markOneRead } from '@/lib/Notificationapi.js'
 
 function getAvatarUrl(avatarUrl) {
   if (!avatarUrl) return null

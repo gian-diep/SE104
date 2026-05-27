@@ -12,7 +12,7 @@ import RatingModal from '@/components/modals/RatingModal'
 import {
   getSellerRequests, getBuyerRequests, getUserSessions,
   acceptRequest, rejectRequest,
-} from '@/lib/Chatapi'
+} from '@/lib/Chatapi.js'
 
 function EmptyState({ icon: Icon, title, subtitle }) {
   return (

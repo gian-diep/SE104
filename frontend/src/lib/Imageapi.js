@@ -5,7 +5,7 @@
  * Dùng trước khi gọi createListing.
  */
 
-import { API_URL } from "@/lib/Api"
+import { API_URL } from "@/lib/Api.js"
 
 /**
  * Upload một File object lên /images/upload

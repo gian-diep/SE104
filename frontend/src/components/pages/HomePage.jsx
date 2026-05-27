@@ -11,10 +11,10 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
-import { getListings } from '@/lib/ListingApi'
-import { buildImageUrl } from '@/lib/Imageapi'
-import { API_URL } from '@/lib/Api'
-import { getUser, getUsers } from '@/lib/Userapi'
+import { getListings } from '@/lib/ListingApi.js'
+import { buildImageUrl } from '@/lib/Imageapi.js'
+import { API_URL } from '@/lib/Api.js'
+import { getUser, getUsers } from '@/lib/Userapi.js'
 
 const CATEGORIES = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
 const CONDITIONS = ['Mới', 'Như mới', 'Tốt', 'Khá tốt', 'Trung bình']

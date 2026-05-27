@@ -5,8 +5,8 @@
  * Pattern giống Listingapi.js — dùng apiFetch từ Api.js.
  */
 
-import { apiFetch } from "@/lib/Api"
-import { API_URL } from '@/lib/Api'
+import { apiFetch } from "@/lib/Api.js"
+import { API_URL } from '@/lib/Api.js'
 
 // ── Listings ──────────────────────────────────────────────────────────────────
 
