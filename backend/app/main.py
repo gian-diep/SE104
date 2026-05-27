@@ -12,6 +12,10 @@ from app.routes import report_route
 from app.routes import notification_route
 from app.routes import appeal_route          # ← THÊM
 
+from app.database.database import Base, engine
+from app.database import models
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
 app.add_middleware(
