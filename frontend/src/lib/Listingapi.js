@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api.js"
+import { apiFetch } from "@/lib/Api.js"
 
 // ── Public ─────────────────────────────────────────────────────────────────
 
