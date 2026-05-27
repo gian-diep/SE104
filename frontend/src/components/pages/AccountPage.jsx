@@ -723,7 +723,7 @@ const handleDeleteListing = (listing) => {
                           className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
                           style={{ backgroundColor: avatarColor(currentUser?.username) }}
                         >
-                          {user.status === 'banned' && (
+                          {currentUser.status === 'banned' && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-heading text-[10px] font-semibold border border-red-200 flex-shrink-0">
                               🚫 Đang bị ban
                             </span>
