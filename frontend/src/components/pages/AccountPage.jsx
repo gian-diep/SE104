@@ -6,7 +6,7 @@ import Footer from '@/components/Footer'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
 import { uploadAvatar, getUserRatings } from '@/lib/Userapi.js'
-import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi'
+import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi.js'
 import { API_URL } from '@/lib/Api.js'
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertCircle,

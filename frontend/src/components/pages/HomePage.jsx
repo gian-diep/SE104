@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
-import { getListings } from '@/lib/ListingApi.js'
+import { getListings } from '@/lib/Listingapi.js'
 import { buildImageUrl } from '@/lib/Imageapi.js'
 import { API_URL } from '@/lib/Api.js'
 import { getUser, getUsers } from '@/lib/Userapi.js'
