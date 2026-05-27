@@ -10,13 +10,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
-import { API_URL } from '@/lib/Api'
+import { API_URL } from '@/lib/Api.js'
 import {
   adminGetListings, adminApproveListing, adminRejectListing, adminDeleteListing,
   adminGetUsers, adminBanUser, adminUnbanUser, adminDeleteUser, adminGetReports
-} from '@/lib/Adminapi'
-import { getReports, resolveReport, punishUserFromReport } from '@/lib/Reportapi'
-import { getAppeals, reviewAppeal } from '@/lib/Appealapi'
+} from '@/lib/Adminapi.js'
+import { getReports, resolveReport, punishUserFromReport } from '@/lib/Reportapi.js'
+import { getAppeals, reviewAppeal } from '@/lib/Appealapi.js'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getImageUrl(imageId) {
   if (!imageId) return null

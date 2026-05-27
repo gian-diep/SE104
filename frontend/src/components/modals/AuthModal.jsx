@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import logo from '@/logo.png'
-import { checkAppeal, createAppeal } from '@/lib/Appealapi'
+import { checkAppeal, createAppeal } from '@/lib/Appealapi.js'
 
 const UNIVERSITIES = [
   'Đại học Bách Khoa TP.HCM',

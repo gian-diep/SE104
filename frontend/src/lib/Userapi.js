@@ -1,4 +1,4 @@
-import { apiFetch, API_URL } from "@/lib/Api"
+import { apiFetch, API_URL } from "@/lib/Api.js"
 
 /**
  * Lấy thông tin profile

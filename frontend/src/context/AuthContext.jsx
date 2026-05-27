@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { registerApi, loginApi } from '@/lib/Authapi'
-import { updateUserProfile, deleteUserAccount } from '@/lib/Userapi'
-import { API_URL } from '@/lib/Api'
+import { registerApi, loginApi } from '@/lib/Authapi.js'
+import { updateUserProfile, deleteUserAccount } from '@/lib/Userapi.js'
+import { API_URL } from '@/lib/Api.js'
 
 const AuthContext = createContext(null)
 

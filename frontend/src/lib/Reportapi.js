@@ -3,7 +3,7 @@
 // THAY THẾ TOÀN BỘ FILE NÀY
 // ============================================================
 
-import { API_URL } from './Api'
+import { API_URL } from './Api.js'
 
 export async function createReport(payload) {
   const res = await fetch(`${API_URL}/reports/`, {

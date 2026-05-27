@@ -3,9 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { API_URL } from '@/lib/Api'
-import { getUserProfile, getUserRatings } from '@/lib/Userapi'
-import { getListingsBySeller } from '@/lib/Listingapi'
+import { API_URL } from '@/lib/Api.js'
+import { getUserProfile, getUserRatings } from '@/lib/Userapi.js'
+import { getListingsBySeller } from '@/lib/Listingapi.js'
 import {
   Star, User, GraduationCap, BookOpen, Package,
   ArrowLeft, MessageCircle, CheckCircle, XCircle, MessageSquare, X,

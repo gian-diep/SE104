@@ -13,11 +13,11 @@ import Footer from '@/components/Footer'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/modals/AuthModal'
 import ChatModal from '@/components/modals/ChatModal'
-import { getListingById } from '@/lib/Listingapi'
-import { buildImageUrl } from '@/lib/Imageapi'
+import { getListingById } from '@/lib/Listingapi.js'
+import { buildImageUrl } from '@/lib/Imageapi.js'
 import { sendChatRequest, getBuyerRequests, getUserSessions } from '@/lib/Chatapi'
-import { createReport } from '@/lib/Reportapi'
-import { API_URL } from '@/lib/Api'
+import { createReport } from '@/lib/Reportapi.js'
+import { API_URL } from '@/lib/Api.js'
 
 function getImageUrls(listing) {
   try {
@@ -364,17 +364,9 @@ export default function ListingDetailPage() {
                         : getInitials(listing.seller_name)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                          {listing.seller_name}
-                        </p>
-
-                        {listing.seller_status === 'banned' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-heading text-[10px] font-semibold border border-red-200 flex-shrink-0">
-                            🚫 Đang bị ban
-                          </span>
-                        )}
-                      </div>
+                      <p className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                        {listing.seller_name}
+                      </p>
                       {listing.seller_rating != null && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <Star className="h-3 w-3 fill-amber-400 text-amber-400" />

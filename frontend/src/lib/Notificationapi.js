@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/Api'
+import { apiFetch } from '@/lib/Api.js'
 
 export async function getNotifications(userId) {
   return apiFetch(`/notifications/${userId}`)

@@ -1,4 +1,4 @@
-import { API_URL } from './Api'
+import { API_URL } from './Api.js'
 
 /**
  * Kiểm tra user đã gửi khiếu nại chưa

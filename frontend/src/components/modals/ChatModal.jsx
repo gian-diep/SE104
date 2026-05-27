@@ -11,7 +11,7 @@ import {
   getSession,
   confirmComplete,
   cancelSession,
-} from '@/lib/Chatapi'
+} from '@/lib/Chatapi.js'
 import { Link } from 'react-router-dom'
 
 export default function ChatModal({ isOpen, onClose, session: sessionProp }) {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Star, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
-import { rateSession } from '@/lib/Chatapi'
+import { rateSession } from '@/lib/Chatapi.js'
 
 const STAR_LABELS = { 1: 'Rất tệ', 2: 'Không tốt', 3: 'Bình thường', 4: 'Tốt', 5: 'Rất tốt' }
 

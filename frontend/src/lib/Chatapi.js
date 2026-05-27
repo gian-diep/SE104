@@ -1,7 +1,7 @@
 // src/lib/Chatapi.js
 // Tất cả API call cho luồng giao dịch & nhắn tin
 
-import { apiFetch } from "@/lib/Api"
+import { apiFetch } from "@/lib/Api.js"
 
 // ══════════════════════════════════════════════════════════════
 // CHAT REQUESTS
