@@ -1,5 +1,5 @@
 export const API_URL =
-  import.meta.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  import.meta.env.VITE_API_URL || "http://localhost:8000"
 
 export async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
