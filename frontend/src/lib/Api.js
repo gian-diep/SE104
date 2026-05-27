@@ -1,5 +1,5 @@
-// Đổi thành URL backend của bạn khi deploy
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+export const API_URL =
+  import.meta.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
@@ -15,7 +15,6 @@ export async function apiFetch(path, options = {}) {
     throw new Error(err.detail || "Lỗi không xác định")
   }
 
-  // 204 No Content → không có body
   if (res.status === 204) return null
 
   return res.json()
