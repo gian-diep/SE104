@@ -703,7 +703,7 @@ export default function AccountPage() {
         }
       }
 
-      let avatarUrl = currentUser?.avatar_url || null
+      let avatarUrl = undefined
       if (avatarFile) {
         const res = await uploadAvatar(avatarFile)
         avatarUrl = res.avatar_id
