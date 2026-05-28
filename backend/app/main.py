@@ -37,9 +37,9 @@ app.include_router(report_route.router)
 app.include_router(notification_route.router)
 app.include_router(appeal_route.router)      # ← THÊM
 
-# ── Mount static ─────────────────────────────────────────────────────────────
-app.mount("/images",  StaticFiles(directory="uploads/images"),  name="images")
-app.mount("/avatars", StaticFiles(directory="uploads/avatars"), name="avatars")
+# # ── Mount static ─────────────────────────────────────────────────────────────
+# app.mount("/images",  StaticFiles(directory="uploads/images"),  name="images")
+# app.mount("/avatars", StaticFiles(directory="uploads/avatars"), name="avatars")
 
 @app.get("/")
 def home():
