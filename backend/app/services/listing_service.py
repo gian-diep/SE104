@@ -6,8 +6,8 @@
 from sqlalchemy.orm import Session
 from app.database.models import Listing
 from app.schemas.listing_schema import ListingCreate, ListingUpdate
-from sqlalchemy import or_
 from app.database.models import User
+from sqlalchemy import or_, func
 
 
 def create_listing(db: Session, seller_id: int, data: ListingCreate) -> Listing:
@@ -50,14 +50,20 @@ def get_listings(
         q = q.filter(Listing.category == category)
     if university:
         q = q.filter(Listing.university == university)
+
     if keyword:
         q = q.filter(
             or_(
+                func.similarity(Listing.item_name, keyword) > 0.3,
+                func.similarity(Listing.subject, keyword) > 0.3,
+                func.similarity(Listing.keywords, keyword) > 0.3,
                 Listing.item_name.ilike(f"%{keyword}%"),
                 Listing.item_description.ilike(f"%{keyword}%"),
                 Listing.subject.ilike(f"%{keyword}%"),
                 Listing.keywords.ilike(f"%{keyword}%"),
             )
+        ).order_by(
+            func.similarity(Listing.item_name, keyword).desc()
         )
     q = q.order_by(Listing.created_at.desc())
     return q.offset(skip).limit(limit).all()
