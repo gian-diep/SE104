@@ -1,0 +1,91 @@
+Table users {
+  id uuid [pk]
+  username varchar
+  email varchar
+  university varchar
+  avatar_url varchar
+  role varchar
+  created_at timestamp
+}
+
+Table listings {
+  id uuid [pk]
+  seller_id uuid [ref: > users.id]
+  item_name varchar
+  item_description text
+  item_price int
+  subject varchar
+  condition varchar
+  status varchar
+  created_at timestamp
+}
+
+Table notifications {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  title varchar
+  content text
+  is_read boolean
+  created_at timestamp
+}
+
+Table ban_appeals {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  reason text
+  status varchar
+  created_at timestamp
+}
+
+Table chat_requests {
+  id uuid [pk]
+  listing_id uuid [ref: > listings.id]
+  buyer_id uuid [ref: > users.id]
+  seller_id uuid [ref: > users.id]
+  status varchar
+  created_at timestamp
+}
+
+Table chat_sessions {
+  id uuid [pk]
+  request_id uuid [ref: > chat_requests.id]
+  listing_id uuid [ref: > listings.id]
+  buyer_id uuid [ref: > users.id]
+  seller_id uuid [ref: > users.id]
+  created_at timestamp
+}
+
+Table messages {
+  id uuid [pk]
+  session_id uuid [ref: > chat_sessions.id]
+  sender_id uuid [ref: > users.id]
+  content text
+  is_read boolean
+  created_at timestamp
+}
+
+Table reports {
+  id uuid [pk]
+  reporter_id uuid [ref: > users.id]
+  reported_user_id uuid [ref: > users.id]
+  listing_id uuid [ref: > listings.id]
+  reason varchar
+  detail text
+  status varchar
+  created_at timestamp
+}
+
+Table ratings {
+  id uuid [pk]
+  session_id uuid [ref: > chat_sessions.id]
+  listing_id uuid [ref: > listings.id]
+  rater_id uuid [ref: > users.id]
+  rated_id uuid [ref: > users.id]
+  score int
+  comment text
+  created_at timestamp
+}
+
+Ref: "listings"."id" < "listings"."item_name"
+
+Ref: "messages"."id" < "messages"."is_read"

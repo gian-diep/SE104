@@ -5,14 +5,15 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
-import { uploadAvatar, getUserRatings } from '@/lib/Userapi'
-import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi'
-import { API_URL } from '@/lib/Api'
+import { uploadAvatar, getUserRatings } from '@/lib/Userapi.js'
+import { loginApi } from '@/lib/Authapi.js'
+import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi.js'
+import { API_URL } from '@/lib/Api.js'
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertCircle,
   Pencil, X, Upload, Save, Info, BookOpen, ClipboardList,
   Tag, Banknote, Star, User, RefreshCw, MessageCircle, PlusCircle,
-  Send, RotateCcw,
+  Send, RotateCcw, Ban,
 } from 'lucide-react'
 
 const CATEGORIES  = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
@@ -24,6 +25,164 @@ const UNIVERSITIES = [
   'Đại học Y Dược TP.HCM', 'Đại học Nông Lâm TP.HCM',
   'Đại học Mở TP.HCM', 'Trường khác',
 ]
+
+const SUBJECTS = [
+  'An toàn thông tin',
+  'Bài chế học',
+  'Bảo vệ thực vật',
+  'Bệnh học ngoại khoa',
+  'Bệnh học nội khoa',
+  'Chăn nuôi học',
+  'Chẩn đoán hình ảnh',
+  'Chủ nghĩa xã hội khoa học',
+  'Cơ học kỹ thuật',
+  'Cơ học lượng tử',
+  'Cơ sở dữ liệu',
+  'Công nghệ phần mềm',
+  'Công nghệ thực phẩm',
+  'Công pháp quốc tế',
+  'Cấu trúc dữ liệu và giải thuật',
+  'DevOps',
+  'Dược liệu học',
+  'Dược lý học',
+  'Đại số tuyến tính',
+  'Điều dưỡng cơ bản',
+  'Điện tử cơ bản',
+  'Điện tử số',
+  'Điện toán đám mây',
+  'Đầu tư tài chính',
+  'Đồ họa máy tính',
+  'Giải phẫu học',
+  'Giải tích 1',
+  'Giải tích 2',
+  'Giải tích 3',
+  'Giáo dục học',
+  'Hành vi tổ chức',
+  'Hệ điều hành',
+  'Hệ quản trị cơ sở dữ liệu',
+  'Hóa học đại cương',
+  'Hóa hữu cơ',
+  'Hóa lý',
+  'Hóa phân tích',
+  'Hóa sinh',
+  'Hóa vô cơ',
+  'Học máy',
+  'Kế toán đại cương',
+  'Kế toán tài chính',
+  'Kế toán quản trị',
+  'Khoa học đất',
+  'Kinh doanh quốc tế',
+  'Kinh tế chính trị Mác-Lênin',
+  'Kinh tế lượng',
+  'Kinh tế vĩ mô',
+  'Kinh tế vi mô',
+  'Kiểm thử phần mềm',
+  'Kiến trúc máy tính',
+  'Kỹ thuật cơ khí',
+  'Kỹ thuật điện',
+  'Kỹ thuật lập trình',
+  'Lâm nghiệp đại cương',
+  'Lập trình C',
+  'Lập trình hướng đối tượng',
+  'Lập trình Java',
+  'Lập trình Python',
+  'Lịch sử Đảng Cộng sản Việt Nam',
+  'Lý luận nhà nước và pháp luật',
+  'Lý thuyết mạch',
+  'Luật dân sự',
+  'Luật hành chính',
+  'Luật hiến pháp',
+  'Luật hình sự',
+  'Luật hôn nhân và gia đình',
+  'Luật lao động',
+  'Luật quốc tế',
+  'Luật thương mại',
+  'Luật tố tụng hình sự',
+  'Marketing căn bản',
+  'Marketing quốc tế',
+  'Mạng máy tính',
+  'Mô phôi học',
+  'Nhập môn lập trình',
+  'Nhúng hệ thống',
+  'Nhiệt động lực học',
+  'Pháp luật đại cương',
+  'Phát triển ứng dụng di động',
+  'Phát triển ứng dụng web',
+  'Phương pháp dạy học Hóa',
+  'Phương pháp dạy học Lý',
+  'Phương pháp dạy học tiếng Anh',
+  'Phương pháp dạy học Toán',
+  'Phương pháp dạy học Văn',
+  'Phương trình vi phân',
+  'Quản trị doanh nghiệp',
+  'Quản trị học',
+  'Quản trị nhân lực',
+  'Sinh học đại cương',
+  'Sinh lý học',
+  'Sinh thái học',
+  'Sức bền vật liệu',
+  'Thị giác máy tính',
+  'Thống kê kinh tế',
+  'Thương mại điện tử',
+  'Thủy sản đại cương',
+  'Tiếng Anh',
+  'Tài chính doanh nghiệp',
+  'Tâm lý học giáo dục',
+  'Tín hiệu và hệ thống',
+  'Toán ứng dụng',
+  'Triết học Mác-Lênin',
+  'Trí tuệ nhân tạo',
+  'Trồng trọt học',
+  'Tư pháp quốc tế',
+  'Tư tưởng Hồ Chí Minh',
+  'Vi điều khiển',
+  'Vi sinh vật học',
+  'Vật lý đại cương A1',
+  'Vật lý đại cương A2',
+  'Vật lý lý thuyết',
+  'Xác suất thống kê',
+  'Xử lý ngôn ngữ tự nhiên',
+  'Khác',
+]
+
+function SelectWithCustom({ value, onChange, options, placeholder, className }) {
+  const sentinel = options[options.length - 1]
+  const CUSTOM_SENTINELS = ['Khác', 'Trường khác']
+  const supportsCustom = CUSTOM_SENTINELS.includes(sentinel)
+
+  const [customMode, setCustomMode] = useState(false)
+
+  const isCustom = supportsCustom && (customMode || (value !== '' && !options.includes(value)))
+
+  const handleSelectChange = (e) => {
+    if (supportsCustom && e.target.value === sentinel) {
+      setCustomMode(true)
+      onChange({ target: { value: '' } })
+    } else {
+      setCustomMode(false)
+      onChange(e)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <select value={isCustom ? sentinel : value} onChange={handleSelectChange} className={className}>
+        <option value="">{placeholder}</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+      {isCustom && (
+        <input
+          type="text"
+          value={value}
+          onChange={onChange}
+          autoFocus
+          placeholder={`Nhập ${sentinel === 'Trường khác' ? 'tên trường' : 'tên môn học'}...`}
+          className={className}
+        />
+      )}
+    </div>
+  )
+}
 
 function getAvatarUrl(avatarUrl) {
   if (!avatarUrl) return null
@@ -84,6 +243,7 @@ function StarRating({ rating, count, onClick }) {
       </div>
       {onClick ? (
         <button
+          type="button"
           onClick={onClick}
           className="font-paragraph text-sm text-muted-foreground hover:text-primary hover:underline transition-colors"
         >
@@ -122,7 +282,7 @@ function RatingsModal({ userId, onClose }) {
     />
 
     {/* Modal wrapper */}
-    <div className="fixed inset-0 z-50 flex items-center justify-start sm:justify-center p-4 pointer-events-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -216,6 +376,34 @@ function RatingsModal({ userId, onClose }) {
                           {new Date(r.created_at).toLocaleDateString('vi-VN')}
                         </span>
                       </div>
+
+                      {r.rated_role && (
+                          <div className="mb-2">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
+                                r.rated_role === 'seller'
+                                  ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                  : 'bg-purple-50 text-purple-600 border-purple-200'
+                              }`}
+                            >
+                              {r.rated_role === 'seller' ? (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
+                                  </svg>
+                                  Đánh giá với tư cách Người bán
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                  </svg>
+                                  Đánh giá với tư cách Người mua
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        )}
 
                       {/* Stars */}
                       <div className="flex items-center gap-0.5 mb-3">
@@ -319,7 +507,7 @@ function EditPanel({ listing, onClose, onSaved }) {
         item_description: form.item_description.trim(),
         category:         form.category,
         condition:        form.condition,
-        subject:          form.subject.trim(),
+        subject:          form.subject,
         university:       form.university,
         keywords:         form.keywords.trim(),
         ...(isResubmit && { status: 'pending' }),
@@ -404,23 +592,37 @@ function EditPanel({ listing, onClose, onSaved }) {
               </select>
             </div>
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className={labelCls}>Môn học</label>
-              <Input value={form.subject} onChange={set('subject')} placeholder="VD: Giải tích" className={inputCls} />
+              {/* ĐÃ FIX Ở ĐÂY */}
+              <SelectWithCustom 
+                value={form.subject} 
+                onChange={set('subject')} 
+                options={SUBJECTS} 
+                placeholder="-- Chọn tên môn học --" 
+                className={selectCls} 
+              />
             </div>
             <div className="space-y-1.5">
               <label className={labelCls}>Giá (VNĐ)</label>
               <Input type="number" min="0" value={form.item_price} onChange={set('item_price')} placeholder="0 = Miễn phí" className={inputCls} />
             </div>
           </div>
+          
           <div className="space-y-1.5">
             <label className={labelCls}>Trường đại học</label>
-            <select value={form.university} onChange={set('university')} className={selectCls}>
-              <option value="">-- Chọn trường --</option>
-              {UNIVERSITIES.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+            {/* ĐÃ FIX Ở ĐÂY */}
+            <SelectWithCustom 
+              value={form.university} 
+              onChange={set('university')} 
+              options={UNIVERSITIES} 
+              placeholder="-- Chọn trường --" 
+              className={selectCls} 
+            />
           </div>
+          
           <div className="space-y-1.5">
             <label className={labelCls}>Mô tả chi tiết</label>
             <textarea value={form.item_description} onChange={set('item_description')} rows={4}
@@ -484,6 +686,7 @@ export default function AccountPage() {
   const [username, setUsername]           = useState('')
   const [university, setUniversity]       = useState('')
   const [password, setPassword]           = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [avatarFile, setAvatarFile]       = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [message, setMessage]             = useState('')
@@ -491,6 +694,15 @@ export default function AccountPage() {
 
   // ✅ showRatings state — controls the modal
   const [showRatings, setShowRatings] = useState(false)
+
+  // Rating từ API (luôn fresh, không phụ thuộc localStorage)
+  const [ratingData, setRatingData] = useState(null)
+  useEffect(() => {
+    if (!currentUser?.id) return
+    getUserRatings(currentUser.id)
+      .then(setRatingData)
+      .catch(() => {})
+  }, [currentUser?.id])
 
   useEffect(() => {
     if (currentUser) {
@@ -501,7 +713,6 @@ export default function AccountPage() {
 
   const [myListings,      setMyListings]      = useState([])
   const [listingsLoading, setListingsLoading] = useState(false)
-  const [activeTab,       setActiveTab]       = useState('profile')
   const [listingFilter,   setListingFilter]   = useState('all')
   const [editingListing,  setEditingListing]  = useState(null)
   const [deleteModal, setDeleteModal] = useState({
@@ -524,8 +735,8 @@ export default function AccountPage() {
   }, [currentUser])
 
   useEffect(() => {
-    if (activeTab === 'listings') loadMyListings()
-  }, [activeTab, loadMyListings])
+    if (currentUser) loadMyListings()
+  }, [currentUser?.id, loadMyListings])
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
@@ -539,6 +750,21 @@ export default function AccountPage() {
   const handleProfileSubmit = async (e) => {
     e.preventDefault(); setMessage(''); setSaving(true)
     try {
+      if (password) {
+        if (!currentPassword) {
+          setMessage('Vui lòng nhập mật khẩu hiện tại')
+          setSaving(false)
+          return
+        }
+        try {
+          await loginApi({ email: currentUser.email, password: currentPassword })
+        } catch {
+          setMessage('Mật khẩu hiện tại không đúng')
+          setSaving(false)
+          return
+        }
+      }
+
       let avatarUrl = currentUser?.avatar_url || null
       if (avatarFile) {
         const res = await uploadAvatar(avatarFile)
@@ -550,7 +776,7 @@ export default function AccountPage() {
         avatar_url: avatarUrl,
         password:   password || undefined,
       })
-      setMessage('Cập nhật thành công'); setPassword(''); setAvatarFile(null)
+      setMessage('Cập nhật thành công'); setPassword(''); setCurrentPassword(''); setAvatarFile(null)
     } catch (err) {
       setMessage(err.message || 'Lỗi khi cập nhật')
     } finally {
@@ -629,16 +855,11 @@ const handleDeleteListing = (listing) => {
 
   if (!currentUser) { navigate('/', { replace: true }); return null }
 
-  const MAIN_TABS = [
-    { id: 'profile',  label: 'Hồ sơ' },
-    { id: 'listings', label: `Bài đăng${counts.all ? ` (${counts.all})` : ''}` },
-  ]
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
           <div className="inline-flex items-center gap-2 bg-teal-50 text-primary px-3 py-1.5 rounded-full border border-teal-200 text-xs font-heading font-semibold uppercase tracking-wide mb-3">
             <User className="w-3.5 h-3.5" />
@@ -648,36 +869,29 @@ const handleDeleteListing = (listing) => {
         </div>
 
         <div className="flex gap-2 mb-8 p-1.5 bg-white rounded-2xl border border-teal-100 shadow-soft w-fit">
-          {MAIN_TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`px-5 py-2.5 rounded-xl font-heading text-sm font-semibold transition-all ${
-                activeTab === t.id ? 'bg-teal-gradient text-white shadow-btn' : 'text-muted-foreground hover:text-foreground hover:bg-surface'
-              }`}>
-              {t.label}
-            </button>
-          ))}
+          <div className="px-5 py-2.5 rounded-xl bg-teal-gradient text-white shadow-btn font-heading text-sm font-semibold">
+            Tài khoản của tôi
+          </div>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* ══ CỘT TRÁI: HỒ SƠ ══ */}
+          <div className="space-y-5">
         {/* ══ TAB: HỒ SƠ ══ */}
-        {activeTab === 'profile' && (
-          <form onSubmit={handleProfileSubmit} className="max-w-lg space-y-5">
+        {true && (
+          <form onSubmit={handleProfileSubmit} className="space-y-5">
             <div className="bg-white rounded-3xl border border-teal-100 shadow-card overflow-hidden">
-              <div className="h-10 bg-teal-gradient relative">
-                <div
-                  className="absolute inset-0 opacity-20"
-                  style={{
-                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)',
-                    backgroundSize: '18px 18px'
-                  }}
-                />
-              </div>
 
-              <div className="px-6 pb-6">
-                <div className="flex items-end gap-4 mb-4">
-                  <div className="relative flex-shrink-0 -mt-10 z-10">
+              <div className="px-6 pt-6 pb-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="relative flex-shrink-0">
                     <div className="w-16 h-16 rounded-full border-4 border-white shadow-card overflow-hidden">
                       {avatarSrc ? (
-                        <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                        <img
+                          src={avatarSrc}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div
                           className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
@@ -687,9 +901,16 @@ const handleDeleteListing = (listing) => {
                         </div>
                       )}
                     </div>
+
+                    {/* upload btn */}
                     <label className="absolute bottom-0 right-0 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-btn">
                       <Upload className="h-3 w-3" />
-                      <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
                     </label>
                   </div>
 
@@ -707,8 +928,8 @@ const handleDeleteListing = (listing) => {
 
                 {/* ✅ onClick opens RatingsModal */}
                 <StarRating
-                  rating={currentUser.rating ?? 0}
-                  count={currentUser.rating_count ?? 0}
+                  rating={ratingData?.rating ?? currentUser.rating ?? 0}
+                  count={ratingData?.rating_count ?? currentUser.rating_count ?? 0}
                   onClick={() => setShowRatings(true)}
                 />
               </div>
@@ -732,8 +953,13 @@ const handleDeleteListing = (listing) => {
 
               <div className="space-y-1.5">
                 <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường học</label>
-                <Input value={university} onChange={e => setUniversity(e.target.value)} placeholder="VD: Đại học Bách Khoa TP.HCM"
-                  className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                <SelectWithCustom 
+                  value={university} 
+                  onChange={e => setUniversity(e.target.value)} 
+                  options={UNIVERSITIES} 
+                  placeholder="-- Chọn trường --" 
+                  className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" 
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -741,6 +967,15 @@ const handleDeleteListing = (listing) => {
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Để trống nếu không đổi"
                   className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
               </div>
+
+              {password && (
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại *</label>
+                  <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Nhập mật khẩu hiện tại để xác nhận"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                  <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc khi đổi mật khẩu mới</p>
+                </div>
+              )}
 
               {message && (
                 <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-paragraph text-sm ${
@@ -766,9 +1001,12 @@ const handleDeleteListing = (listing) => {
             </div>
           </form>
         )}
+          </div>
 
+          {/* ══ CỘT PHẢI: BÀI ĐĂNG ══ */}
+          <div>
         {/* ══ TAB: BÀI ĐĂNG ══ */}
-        {activeTab === 'listings' && (
+        {true && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <div className="flex gap-1.5 flex-wrap">
@@ -944,6 +1182,8 @@ const handleDeleteListing = (listing) => {
             )}
           </div>
         )}
+          </div>
+        </div>
       </div>
 
       <Footer />

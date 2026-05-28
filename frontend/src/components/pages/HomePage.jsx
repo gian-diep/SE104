@@ -7,13 +7,14 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import {
   Search, SlidersHorizontal, PlusCircle, Star, BookOpen,
   Sparkles, GraduationCap, TrendingUp, Zap, Clock, Gift,
-  ChevronRight, Layers,
+  ChevronRight, Layers, Ban,
 } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
-import { getListings } from '@/lib/ListingApi'
-import { buildImageUrl } from '@/lib/Imageapi'
-import { getUser, getUsers } from '@/lib/Userapi'
+import { getListings } from '@/lib/Listingapi.js'
+import { buildImageUrl } from '@/lib/Imageapi.js'
+import { API_URL } from '@/lib/Api.js'
+import { getUser, getUsers } from '@/lib/Userapi.js'
 
 const CATEGORIES = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
 const CONDITIONS = ['Mới', 'Như mới', 'Tốt', 'Khá tốt', 'Trung bình']
@@ -32,62 +33,121 @@ const UNIVERSITIES = [
 ]
 
 const SUBJECTS = [
-  'Giải tích 1', 'Giải tích 2', 'Giải tích 3',
-  'Đại số tuyến tính', 'Xác suất thống kê',
-  'Vật lý đại cương A1', 'Vật lý đại cương A2',
-  'Hóa học đại cương',
-  'Triết học Mác-Lênin', 'Kinh tế chính trị Mác-Lênin',
-  'Chủ nghĩa xã hội khoa học', 'Lịch sử Đảng Cộng sản Việt Nam',
-  'Tư tưởng Hồ Chí Minh',
-  'Pháp luật đại cương',
-  'Tiếng Anh',
-  'Nhập môn lập trình', 'Kỹ thuật lập trình',
-  'Lập trình hướng đối tượng', 'Lập trình C', 'Lập trình Java', 'Lập trình Python',
-  'Cấu trúc dữ liệu và giải thuật',
-  'Cơ sở dữ liệu', 'Hệ quản trị cơ sở dữ liệu',
-  'Mạng máy tính', 'An toàn thông tin',
-  'Hệ điều hành', 'Kiến trúc máy tính',
-  'Công nghệ phần mềm', 'Kiểm thử phần mềm',
-  'Trí tuệ nhân tạo', 'Học máy', 'Xử lý ngôn ngữ tự nhiên',
-  'Phát triển ứng dụng web', 'Phát triển ứng dụng di động',
-  'Điện toán đám mây', 'DevOps',
-  'Đồ họa máy tính', 'Thị giác máy tính',
-  'Kỹ thuật điện', 'Điện tử cơ bản', 'Điện tử số',
-  'Lý thuyết mạch', 'Tín hiệu và hệ thống',
-  'Vi điều khiển', 'Nhúng hệ thống',
-  'Kỹ thuật cơ khí', 'Sức bền vật liệu', 'Cơ học kỹ thuật',
-  'Nhiệt động lực học',
-  'Hóa hữu cơ', 'Hóa vô cơ', 'Hóa phân tích', 'Hóa lý',
-  'Sinh học đại cương', 'Vi sinh vật học', 'Hóa sinh',
-  'Vật lý lý thuyết', 'Cơ học lượng tử',
-  'Toán ứng dụng', 'Phương trình vi phân',
-  'Kinh tế vi mô', 'Kinh tế vĩ mô',
-  'Quản trị học', 'Quản trị doanh nghiệp',
-  'Marketing căn bản', 'Marketing quốc tế',
-  'Kế toán đại cương', 'Kế toán tài chính', 'Kế toán quản trị',
-  'Tài chính doanh nghiệp', 'Đầu tư tài chính',
-  'Quản trị nhân lực', 'Hành vi tổ chức',
-  'Kinh doanh quốc tế', 'Thương mại điện tử',
-  'Thống kê kinh tế', 'Kinh tế lượng',
-  'Lý luận nhà nước và pháp luật',
-  'Luật hiến pháp', 'Luật hành chính',
-  'Luật dân sự', 'Luật hôn nhân và gia đình',
-  'Luật hình sự', 'Luật tố tụng hình sự',
-  'Luật thương mại', 'Luật lao động',
-  'Luật quốc tế', 'Công pháp quốc tế',
-  'Tư pháp quốc tế',
-  'Giải phẫu học', 'Sinh lý học', 'Mô phôi học',
-  'Bệnh học nội khoa', 'Bệnh học ngoại khoa',
-  'Dược lý học', 'Dược liệu học', 'Bào chế học',
-  'Điều dưỡng cơ bản', 'Chẩn đoán hình ảnh',
-  'Tâm lý học giáo dục', 'Giáo dục học',
-  'Phương pháp dạy học Toán', 'Phương pháp dạy học Văn',
-  'Phương pháp dạy học Lý', 'Phương pháp dạy học Hóa',
-  'Phương pháp dạy học tiếng Anh',
-  'Sinh thái học', 'Lâm nghiệp đại cương',
-  'Khoa học đất', 'Trồng trọt học', 'Chăn nuôi học',
-  'Thủy sản đại cương', 'Bảo vệ thực vật',
+  'An toàn thông tin',
+  'Bài chế học',
+  'Bảo vệ thực vật',
+  'Bệnh học ngoại khoa',
+  'Bệnh học nội khoa',
+  'Chăn nuôi học',
+  'Chẩn đoán hình ảnh',
+  'Chủ nghĩa xã hội khoa học',
+  'Cơ học kỹ thuật',
+  'Cơ học lượng tử',
+  'Cơ sở dữ liệu',
+  'Công nghệ phần mềm',
   'Công nghệ thực phẩm',
+  'Công pháp quốc tế',
+  'Cấu trúc dữ liệu và giải thuật',
+  'DevOps',
+  'Dược liệu học',
+  'Dược lý học',
+  'Đại số tuyến tính',
+  'Điều dưỡng cơ bản',
+  'Điện tử cơ bản',
+  'Điện tử số',
+  'Điện toán đám mây',
+  'Đầu tư tài chính',
+  'Đồ họa máy tính',
+  'Giải phẫu học',
+  'Giải tích 1',
+  'Giải tích 2',
+  'Giải tích 3',
+  'Giáo dục học',
+  'Hành vi tổ chức',
+  'Hệ điều hành',
+  'Hệ quản trị cơ sở dữ liệu',
+  'Hóa học đại cương',
+  'Hóa hữu cơ',
+  'Hóa lý',
+  'Hóa phân tích',
+  'Hóa sinh',
+  'Hóa vô cơ',
+  'Học máy',
+  'Kế toán đại cương',
+  'Kế toán tài chính',
+  'Kế toán quản trị',
+  'Khoa học đất',
+  'Kinh doanh quốc tế',
+  'Kinh tế chính trị Mác-Lênin',
+  'Kinh tế lượng',
+  'Kinh tế vĩ mô',
+  'Kinh tế vi mô',
+  'Kiểm thử phần mềm',
+  'Kiến trúc máy tính',
+  'Kỹ thuật cơ khí',
+  'Kỹ thuật điện',
+  'Kỹ thuật lập trình',
+  'Lâm nghiệp đại cương',
+  'Lập trình C',
+  'Lập trình hướng đối tượng',
+  'Lập trình Java',
+  'Lập trình Python',
+  'Lịch sử Đảng Cộng sản Việt Nam',
+  'Lý luận nhà nước và pháp luật',
+  'Lý thuyết mạch',
+  'Luật dân sự',
+  'Luật hành chính',
+  'Luật hiến pháp',
+  'Luật hình sự',
+  'Luật hôn nhân và gia đình',
+  'Luật lao động',
+  'Luật quốc tế',
+  'Luật thương mại',
+  'Luật tố tụng hình sự',
+  'Marketing căn bản',
+  'Marketing quốc tế',
+  'Mạng máy tính',
+  'Mô phôi học',
+  'Nhập môn lập trình',
+  'Nhúng hệ thống',
+  'Nhiệt động lực học',
+  'Pháp luật đại cương',
+  'Phát triển ứng dụng di động',
+  'Phát triển ứng dụng web',
+  'Phương pháp dạy học Hóa',
+  'Phương pháp dạy học Lý',
+  'Phương pháp dạy học tiếng Anh',
+  'Phương pháp dạy học Toán',
+  'Phương pháp dạy học Văn',
+  'Phương trình vi phân',
+  'Quản trị doanh nghiệp',
+  'Quản trị học',
+  'Quản trị nhân lực',
+  'Sinh học đại cương',
+  'Sinh lý học',
+  'Sinh thái học',
+  'Sức bền vật liệu',
+  'Thị giác máy tính',
+  'Thống kê kinh tế',
+  'Thương mại điện tử',
+  'Thủy sản đại cương',
+  'Tiếng Anh',
+  'Tài chính doanh nghiệp',
+  'Tâm lý học giáo dục',
+  'Tín hiệu và hệ thống',
+  'Toán ứng dụng',
+  'Triết học Mác-Lênin',
+  'Trí tuệ nhân tạo',
+  'Trồng trọt học',
+  'Tư pháp quốc tế',
+  'Tư tưởng Hồ Chí Minh',
+  'Vi điều khiển',
+  'Vi sinh vật học',
+  'Vật lý đại cương A1',
+  'Vật lý đại cương A2',
+  'Vật lý lý thuyết',
+  'Xác suất thống kê',
+  'Xử lý ngôn ngữ tự nhiên',
   'Khác',
 ]
 
@@ -103,12 +163,10 @@ function getInitials(name = '') {
   return name.trim().split(/\s+/).slice(-2).map(w => w[0]?.toUpperCase() || '').join('')
 }
 
-function getSellerRating(sellerId) {
-  try {
-    const users = JSON.parse(localStorage.getItem('bookycle_users') || '[]')
-    const user = users.find(u => u.id === sellerId)
-    return user?.rating ?? null
-  } catch { return null }
+function buildAvatarUrl(avatarUrl) {
+  if (!avatarUrl) return null
+  if (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:')) return avatarUrl
+  return `${API_URL}/avatars/${avatarUrl}`
 }
 
 const AVATAR_COLORS = ['#0D9488', '#14B8A6', '#0F766E', '#F59E0B', '#10B981', '#6366F1']
@@ -161,9 +219,10 @@ function FeatureChip({ icon: Icon, label, color = 'teal' }) {
   )
 }
 
-function ListingCardCompact({ listing }) {
+function ListingCardCompact({ listing, seller }) {
   const imgUrl = getListingImage(listing)
   const isFree = listing.item_price === 0
+  const avatarSrc = buildAvatarUrl(listing.seller_avatar_url || seller?.avatar_url)
   return (
     <Link to={`/listings/${listing.id}`} className="block group flex-shrink-0 w-80">
       <div className="bg-white rounded-2xl border border-teal-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden">
@@ -184,9 +243,11 @@ function ListingCardCompact({ listing }) {
             {listing.item_name}
           </h3>
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center font-heading text-[8px] font-bold text-white"
+            <div className="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center font-heading text-[8px] font-bold text-white"
               style={{ backgroundColor: avatarColor(listing.seller_name) }}>
-              {getInitials(listing.seller_name)}
+              {avatarSrc
+                ? <img src={avatarSrc} alt={listing.seller_name} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display='none' }} />
+                : getInitials(listing.seller_name)}
             </div>
             <span className="font-paragraph text-[10px] text-muted-foreground truncate">{listing.seller_name || 'Ẩn danh'}</span>
           </div>
@@ -196,7 +257,7 @@ function ListingCardCompact({ listing }) {
   )
 }
 
-function ListingCard({ listing, index }) {
+function ListingCard({ listing, index, seller }) {
   const imgUrl = getListingImage(listing)
   const isFree = listing.item_price === 0
   return (
@@ -243,21 +304,20 @@ function ListingCard({ listing, index }) {
             )}
             <div className="mt-auto pt-3 border-t border-teal-50 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center font-heading text-[10px] font-bold text-white shadow-sm"
+                <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center font-heading text-[10px] font-bold text-white shadow-sm"
                   style={{ backgroundColor: avatarColor(listing.seller_name) }}>
-                  {getInitials(listing.seller_name)}
+                  {(listing.seller_avatar_url || seller?.avatar_url)
+                    ? <img src={buildAvatarUrl(listing.seller_avatar_url || seller?.avatar_url)} alt={listing.seller_name} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display='none' }} />
+                    : getInitials(listing.seller_name)}
                 </div>
                 <span className="font-paragraph text-xs text-muted-foreground truncate">{listing.seller_name || 'Ẩn danh'}</span>
               </div>
-              {(() => {
-                const r = getSellerRating(listing.seller_id)
-                return r !== null ? (
-                  <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 px-2 py-0.5 rounded-full">
-                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                    <span className="font-heading text-[11px] font-bold text-amber-600">{r.toFixed(1)}</span>
-                  </div>
-                ) : null
-              })()}
+              {(listing.seller_rating != null || seller?.rating != null) && (
+                <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <span className="font-heading text-[11px] font-bold text-amber-600">{Number(listing.seller_rating ?? seller?.rating).toFixed(1)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -274,14 +334,23 @@ function UserCard({ user, index }) {
       <Link to={`/nguoi-dung/${user.id}`} className="block group">
         <div className="bg-white rounded-2xl border border-teal-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 p-5">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center font-heading text-lg font-black text-white shadow-sm"
+            <div className="w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center font-heading text-lg font-black text-white shadow-sm"
               style={{ backgroundColor: avatarColor(user.username) }}>
-              {getInitials(user.username)}
+              {user.avatar_url
+                ? <img src={buildAvatarUrl(user.avatar_url)} alt={user.username} className="w-full h-full object-cover rounded-2xl" onError={e => { e.currentTarget.style.display='none' }} />
+                : getInitials(user.username)}
             </div>
             <div className="min-w-0">
-              <h3 className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                {user.username || 'Ẩn danh'}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-heading text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                  {user.username || 'Ẩn danh'}
+                </h3>
+                {user.status === 'banned' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500/10 text-red-600 font-heading text-[10px] font-semibold border border-red-500/20 flex-shrink-0">
+                    <Ban className="w-3 h-3" /> Đang bị hạn chế
+                  </span>
+                )}
+              </div>
               {user.university && (
                 <p className="font-paragraph text-xs text-muted-foreground truncate mt-0.5">{user.university}</p>
               )}
@@ -302,7 +371,7 @@ function UserCard({ user, index }) {
   )
 }
 
-function HorizontalSection({ title, icon: Icon, items, onViewAll, accentColor = 'teal', emptyText = 'Không có tài liệu' }) {
+function HorizontalSection({ title, icon: Icon, items, onViewAll, accentColor = 'teal', emptyText = 'Không có tài liệu', usersMap = {} }) {
   const colorMap = {
     teal:    { badge: 'bg-teal-50 text-teal-700 border-teal-200',     icon: 'text-primary',    link: 'text-primary hover:text-primary/80' },
     amber:   { badge: 'bg-amber-50 text-amber-700 border-amber-200',   icon: 'text-amber-500',  link: 'text-amber-600 hover:text-amber-700' },
@@ -333,7 +402,7 @@ function HorizontalSection({ title, icon: Icon, items, onViewAll, accentColor = 
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-3 px-6 md:px-16 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {items.map(listing => <ListingCardCompact key={listing.id} listing={listing} />)}
+          {items.map(listing => <ListingCardCompact key={listing.id} listing={listing} seller={usersMap[listing.seller_id]} />)}
           <button
             onClick={onViewAll}
             className="flex-shrink-0 w-36 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-teal-200 hover:border-primary hover:bg-teal-50/50 transition-all group cursor-pointer"
@@ -415,7 +484,25 @@ export default function HomePage() {
     loadData()
   }, [])
 
-  const approvedListings = listings.filter(l => l.status === 'approved' && l.transaction_status === 'available')
+  const usersMap = useMemo(() => {
+    const m = {}
+    users.forEach(u => { m[u.id] = u })
+    return m
+  }, [users])
+
+  // Lọc bỏ listing của user đang bị ban (dựa vào usersMap đã có status)
+  const isSellerActive = (listing) => {
+    const seller = usersMap[listing.seller_id]
+    // Nếu chưa load xong usersMap thì tạm cho qua, khi load xong sẽ tự recompute
+    if (!seller) return true
+    return seller.status !== 'banned'
+  }
+
+  const approvedListings = listings.filter(l =>
+    l.status === 'approved' &&
+    l.transaction_status === 'available' &&
+    isSellerActive(l)
+  )
   const bookListing = listings.filter(l => l.status === 'approved')
 
   const applyPriceFilter = useCallback((list, filter) => {
@@ -592,16 +679,16 @@ export default function HomePage() {
 
       {/* HORIZONTAL SECTIONS */}
       <div className="py-10">
-        <HorizontalSection title="Mới đăng" icon={Clock} items={recentListings} onViewAll={() => goToSearch()} accentColor="teal" emptyText="Chưa có tài liệu mới" />
-        <HorizontalSection title="Miễn phí" icon={Gift} items={freeListings} onViewAll={() => goToSearch('free')} accentColor="emerald" emptyText="Chưa có tài liệu miễn phí" />
+        <HorizontalSection title="Mới đăng" icon={Clock} items={recentListings} usersMap={usersMap} onViewAll={() => goToSearch()} accentColor="teal" emptyText="Chưa có tài liệu mới" />
+        <HorizontalSection title="Miễn phí" icon={Gift} items={freeListings} usersMap={usersMap} onViewAll={() => goToSearch('free')} accentColor="emerald" emptyText="Chưa có tài liệu miễn phí" />
         {giaoTrinhListings.length > 0 && (
-          <HorizontalSection title="Giáo trình" icon={GraduationCap} items={giaoTrinhListings} onViewAll={() => goToSearch('all','Giáo trình')} accentColor="amber" emptyText="Chưa có giáo trình" />
+          <HorizontalSection title="Giáo trình" icon={GraduationCap} items={giaoTrinhListings} usersMap={usersMap} onViewAll={() => goToSearch('all','Giáo trình')} accentColor="amber" emptyText="Chưa có giáo trình" />
         )}
         {sachListings.length > 0 && (
-          <HorizontalSection title="Sách" icon={BookOpen} items={sachListings} onViewAll={() => goToSearch('all', 'Sách')} accentColor="teal" emptyText="Chưa có sách" />
+          <HorizontalSection title="Sách" icon={BookOpen} items={sachListings} usersMap={usersMap} onViewAll={() => goToSearch('all', 'Sách')} accentColor="teal" emptyText="Chưa có sách" />
         )}
         {onlineListings.length > 0 && (
-          <HorizontalSection title="Tài liệu Online" icon={Layers} items={onlineListings} onViewAll={() => goToSearch('all','Tài liệu online')} accentColor="emerald" emptyText="Chưa có tài liệu online" />
+          <HorizontalSection title="Tài liệu Online" icon={Layers} items={onlineListings} usersMap={usersMap} onViewAll={() => goToSearch('all','Tài liệu online')} accentColor="emerald" emptyText="Chưa có tài liệu online" />
         )}
       </div>
 
@@ -734,7 +821,7 @@ export default function HomePage() {
                   ) : filteredListings.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                       <AnimatePresence mode="popLayout">
-                        {filteredListings.map((listing, index) => <ListingCard key={listing.id} listing={listing} index={index} />)}
+                        {filteredListings.map((listing, index) => <ListingCard key={listing.id} listing={listing} index={index} seller={usersMap[listing.seller_id]} />)}
                       </AnimatePresence>
                     </div>
                   ) : (
