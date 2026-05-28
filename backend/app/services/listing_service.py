@@ -54,9 +54,9 @@ def get_listings(
     if keyword:
         q = q.filter(
             or_(
-                func.similarity(Listing.item_name, keyword) > 0.3,
-                func.similarity(Listing.subject, keyword) > 0.3,
-                func.similarity(Listing.keywords, keyword) > 0.3,
+                func.similarity(Listing.item_name, keyword) > 0.1,
+                func.similarity(Listing.subject, keyword) > 0.1,
+                func.similarity(Listing.keywords, keyword) > 0.1,
                 Listing.item_name.ilike(f"%{keyword}%"),
                 Listing.item_description.ilike(f"%{keyword}%"),
                 Listing.subject.ilike(f"%{keyword}%"),
