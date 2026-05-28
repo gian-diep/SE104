@@ -232,7 +232,6 @@ function TransactionBadge({ status }) {
   )
 }
 
-// ✅ onClick prop wired — clicking the "(N đánh giá)" text opens the modal
 function StarRating({ rating, count, onClick }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -272,7 +271,6 @@ function RatingsModal({ userId, onClose }) {
 
   return (
   <>
-    {/* Backdrop */}
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -281,7 +279,6 @@ function RatingsModal({ userId, onClose }) {
       onClick={onClose}
     />
 
-    {/* Modal wrapper */}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -294,7 +291,6 @@ function RatingsModal({ userId, onClose }) {
                    flex flex-col max-h-[80vh]
                    overflow-hidden border border-teal-100"
       >
-        {/* Header */}
         <div className="px-6 py-5 flex items-center justify-between flex-shrink-0 bg-teal-gradient">
           <div>
             <p className="font-heading text-white/70 text-xs uppercase tracking-widest mb-0.5">
@@ -315,7 +311,6 @@ function RatingsModal({ userId, onClose }) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 bg-background">
           {loading && (
             <div className="py-12 flex flex-col items-center gap-3">
@@ -323,152 +318,99 @@ function RatingsModal({ userId, onClose }) {
                 <div className="absolute inset-0 rounded-full border-4 border-teal-100" />
                 <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
               </div>
-
-              <p className="font-paragraph text-sm text-muted-foreground">
-                Đang tải...
-              </p>
+              <p className="font-paragraph text-sm text-muted-foreground">Đang tải...</p>
             </div>
           )}
 
-          {!loading &&
-            (!data?.ratings || data.ratings.length === 0) && (
-              <div className="py-12 text-center">
-                <Star className="h-10 w-10 text-teal-100 mx-auto mb-3" />
-                <p className="font-heading text-sm font-bold text-muted-foreground">
-                  Chưa có đánh giá nào
-                </p>
-              </div>
-            )}
+          {!loading && (!data?.ratings || data.ratings.length === 0) && (
+            <div className="py-12 text-center">
+              <Star className="h-10 w-10 text-teal-100 mx-auto mb-3" />
+              <p className="font-heading text-sm font-bold text-muted-foreground">Chưa có đánh giá nào</p>
+            </div>
+          )}
 
-          {!loading &&
-            data?.ratings?.map(r => {
-              const listingImage = r.listing_image
-                ? getImageUrl(r.listing_image)
-                : null
+          {!loading && data?.ratings?.map(r => {
+            const listingImage = r.listing_image ? getImageUrl(r.listing_image) : null
+            return (
+              <div key={r.id} className="bg-white rounded-2xl border border-teal-100 shadow-soft p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-sm font-black text-primary">
+                    {r.rater_avatar ? (
+                      <img src={getAvatarUrl(r.rater_avatar)} alt={r.rater_name} className="w-full h-full object-cover" />
+                    ) : (
+                      getInitials(r.rater_name)
+                    )}
+                  </div>
 
-              return (
-                <div
-                  key={r.id}
-                  className="bg-white rounded-2xl border border-teal-100 shadow-soft p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Avatar */}
-                    <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-sm font-black text-primary">
-                      {r.rater_avatar ? (
-                        <img
-                          src={getAvatarUrl(r.rater_avatar)}
-                          alt={r.rater_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        getInitials(r.rater_name)
-                      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-heading text-sm font-bold text-foreground truncate">{r.rater_name}</span>
+                      <span className="font-paragraph text-xs text-muted-foreground flex-shrink-0">
+                        {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                      </span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      {/* User + date */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="font-heading text-sm font-bold text-foreground truncate">
-                          {r.rater_name}
-                        </span>
-
-                        <span className="font-paragraph text-xs text-muted-foreground flex-shrink-0">
-                          {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                    {r.rated_role && (
+                      <div className="mb-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
+                          r.rated_role === 'seller'
+                            ? 'bg-blue-50 text-blue-600 border-blue-200'
+                            : 'bg-purple-50 text-purple-600 border-purple-200'
+                        }`}>
+                          {r.rated_role === 'seller' ? (
+                            <>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
+                              </svg>
+                              Đánh giá với tư cách Người bán
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                              </svg>
+                              Đánh giá với tư cách Người mua
+                            </>
+                          )}
                         </span>
                       </div>
+                    )}
 
-                      {r.rated_role && (
-                          <div className="mb-2">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
-                                r.rated_role === 'seller'
-                                  ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                  : 'bg-purple-50 text-purple-600 border-purple-200'
-                              }`}
-                            >
-                              {r.rated_role === 'seller' ? (
-                                <>
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
-                                  </svg>
-                                  Đánh giá với tư cách Người bán
-                                </>
-                              ) : (
-                                <>
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                  </svg>
-                                  Đánh giá với tư cách Người mua
-                                </>
-                              )}
-                            </span>
-                          </div>
-                        )}
+                    <div className="flex items-center gap-0.5 mb-3">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className={`h-3.5 w-3.5 ${s <= r.stars ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/20'}`} />
+                      ))}
+                    </div>
 
-                      {/* Stars */}
-                      <div className="flex items-center gap-0.5 mb-3">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <Star
-                            key={s}
-                            className={`h-3.5 w-3.5 ${
-                              s <= r.stars
-                                ? 'text-amber-400 fill-amber-400'
-                                : 'text-muted-foreground/20'
-                            }`}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Listing info */}
-                      {(r.listing_name ||
-                        r.listing?.item_name) && (
-                        <Link
-                          to={`/listings/${
-                            r.listing_id || r.listing?.id
-                          }`}
-                          className="mb-3 block"
-                        >
-                          <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-2.5 hover:border-primary transition-colors">
-                            <div className="flex items-center gap-3">
-                              {listingImage && (
-                                <img
-                                  src={listingImage}
-                                  alt="listing"
-                                  className="w-14 h-14 rounded-lg object-cover border border-teal-100 flex-shrink-0"
-                                />
-                              )}
-
-                              <div className="min-w-0">
-                                <p className="font-heading text-xs uppercase tracking-wide text-primary mb-0.5">
-                                  Đánh giá cho bài đăng
-                                </p>
-
-                                <p className="font-heading text-sm font-bold text-foreground truncate">
-                                  {r.listing_name ||
-                                    r.listing?.item_name}
-                                </p>
-                              </div>
+                    {(r.listing_name || r.listing?.item_name) && (
+                      <Link to={`/listings/${r.listing_id || r.listing?.id}`} className="mb-3 block">
+                        <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-2.5 hover:border-primary transition-colors">
+                          <div className="flex items-center gap-3">
+                            {listingImage && (
+                              <img src={listingImage} alt="listing" className="w-14 h-14 rounded-lg object-cover border border-teal-100 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-heading text-xs uppercase tracking-wide text-primary mb-0.5">Đánh giá cho bài đăng</p>
+                              <p className="font-heading text-sm font-bold text-foreground truncate">{r.listing_name || r.listing?.item_name}</p>
                             </div>
                           </div>
-                        </Link>
-                      )}
+                        </div>
+                      </Link>
+                    )}
 
-                      {/* Comment */}
-                      {r.comment && (
-                        <p className="font-paragraph text-sm text-foreground leading-relaxed">
-                          {r.comment}
-                        </p>
-                      )}
-                    </div>
+                    {r.comment && (
+                      <p className="font-paragraph text-sm text-foreground leading-relaxed">{r.comment}</p>
+                    )}
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            )
+          })}
         </div>
       </motion.div>
     </div>
   </>
-)
+  )
 }
 
 // ── Edit Panel ────────────────────────────────────────────────────────────────
@@ -596,7 +538,6 @@ function EditPanel({ listing, onClose, onSaved }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className={labelCls}>Môn học</label>
-              {/* ĐÃ FIX Ở ĐÂY */}
               <SelectWithCustom 
                 value={form.subject} 
                 onChange={set('subject')} 
@@ -613,7 +554,6 @@ function EditPanel({ listing, onClose, onSaved }) {
           
           <div className="space-y-1.5">
             <label className={labelCls}>Trường đại học</label>
-            {/* ĐÃ FIX Ở ĐÂY */}
             <SelectWithCustom 
               value={form.university} 
               onChange={set('university')} 
@@ -692,10 +632,8 @@ export default function AccountPage() {
   const [message, setMessage]             = useState('')
   const [saving, setSaving]               = useState(false)
 
-  // ✅ showRatings state — controls the modal
   const [showRatings, setShowRatings] = useState(false)
 
-  // Rating từ API (luôn fresh, không phụ thuộc localStorage)
   const [ratingData, setRatingData] = useState(null)
   useEffect(() => {
     if (!currentUser?.id) return
@@ -717,7 +655,7 @@ export default function AccountPage() {
   const [editingListing,  setEditingListing]  = useState(null)
   const [deleteModal, setDeleteModal] = useState({
     open: false,
-    type: null, // 'account' | 'listing'
+    type: null,
     listing: null,
   })
 
@@ -785,25 +723,16 @@ export default function AccountPage() {
   }
 
   const handleDeleteAccount = async () => {
-    setDeleteModal({
-      open: true,
-      type: 'account',
-      listing: null,
-    })
+    setDeleteModal({ open: true, type: 'account', listing: null })
   }
 
-const handleDeleteListing = (listing) => {
-  if (listing.transaction_status === 'negotiating') {
-    alert('Không thể xóa bài đăng đang trong tình trạng thương lượng.')
-    return
+  const handleDeleteListing = (listing) => {
+    if (listing.transaction_status === 'negotiating') {
+      alert('Không thể xóa bài đăng đang trong tình trạng thương lượng.')
+      return
+    }
+    setDeleteModal({ open: true, type: 'listing', listing })
   }
-
-  setDeleteModal({
-    open: true,
-    type: 'listing',
-    listing,
-  })
-}
 
   const confirmDelete = async () => {
     try {
@@ -812,17 +741,11 @@ const handleDeleteListing = (listing) => {
         navigate('/')
         return
       }
-
       if (deleteModal.type === 'listing') {
         await deleteListingApi(deleteModal.listing.id)
         loadMyListings()
       }
-
-      setDeleteModal({
-        open: false,
-        type: null,
-        listing: null,
-      })
+      setDeleteModal({ open: false, type: null, listing: null })
     } catch (err) {
       alert(err.message || 'Có lỗi xảy ra')
     }
@@ -877,136 +800,133 @@ const handleDeleteListing = (listing) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* ══ CỘT TRÁI: HỒ SƠ ══ */}
           <div className="space-y-5">
-        {/* ══ TAB: HỒ SƠ ══ */}
-        {true && (
-          <form onSubmit={handleProfileSubmit} className="space-y-5">
-            <div className="bg-white rounded-3xl border border-teal-100 shadow-card overflow-hidden">
-
-              <div className="px-6 pt-6 pb-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-16 h-16 rounded-full border-4 border-white shadow-card overflow-hidden">
-                      {avatarSrc ? (
-                        <img
-                          src={avatarSrc}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
-                          style={{ backgroundColor: avatarColor(currentUser?.username) }}
-                        >
-                          {getInitials(currentUser?.username)}
-                        </div>
-                      )}
+            <form onSubmit={handleProfileSubmit} className="space-y-5">
+              <div className="bg-white rounded-3xl border border-teal-100 shadow-card overflow-hidden">
+                <div className="px-6 pt-6 pb-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-16 h-16 rounded-full border-4 border-white shadow-card overflow-hidden">
+                        {avatarSrc ? (
+                          <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
+                            style={{ backgroundColor: avatarColor(currentUser?.username) }}
+                          >
+                            {getInitials(currentUser?.username)}
+                          </div>
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-btn">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                      </label>
                     </div>
 
-                    {/* upload btn */}
-                    <label className="absolute bottom-0 right-0 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-btn">
-                      <Upload className="h-3 w-3" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex-1 min-w-0 pb-1">
+                      <p className="font-heading text-2xl font-black truncate text-foreground">{currentUser?.username}</p>
+                      <p className="font-paragraph text-sm text-muted-foreground">{currentUser?.email}</p>
+                    </div>
+
+                    {currentUser.role === 'admin' && (
+                      <span className="mb-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-heading text-[10px] font-semibold uppercase tracking-wide border border-primary/20">
+                        Admin
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex-1 min-w-0 pb-1">
-                    <p className="font-heading text-2xl font-black truncate text-foreground">{currentUser?.username}</p>
-                    <p className="font-paragraph text-sm text-muted-foreground">{currentUser?.email}</p>
-                  </div>
+                  <StarRating
+                    rating={ratingData?.rating ?? currentUser.rating ?? 0}
+                    count={ratingData?.rating_count ?? currentUser.rating_count ?? 0}
+                    onClick={() => setShowRatings(true)}
+                  />
+                </div>
+              </div>
 
-                  {currentUser.role === 'admin' && (
-                    <span className="mb-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-heading text-[10px] font-semibold uppercase tracking-wide border border-primary/20">
-                      Admin
-                    </span>
-                  )}
+              <div className="bg-white rounded-2xl border border-teal-100 shadow-soft p-6 space-y-4">
+                <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground border-b border-teal-50 pb-3">Chỉnh sửa hồ sơ</h3>
+
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tên người dùng</label>
+                  <Input value={username} onChange={e => setUsername(e.target.value)}
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
                 </div>
 
-                {/* ✅ onClick opens RatingsModal */}
-                <StarRating
-                  rating={ratingData?.rating ?? currentUser.rating ?? 0}
-                  count={ratingData?.rating_count ?? currentUser.rating_count ?? 0}
-                  onClick={() => setShowRatings(true)}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-teal-100 shadow-soft p-6 space-y-4">
-              <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground border-b border-teal-50 pb-3">Chỉnh sửa hồ sơ</h3>
-
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tên người dùng</label>
-                <Input value={username} onChange={e => setUsername(e.target.value)}
-                  className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</label>
-                <Input value={currentUser?.email || ''} disabled
-                  className="h-11 rounded-xl border-teal-100 font-paragraph bg-surface text-sm opacity-50" />
-                <p className="font-paragraph text-xs text-muted-foreground">Email không thể thay đổi</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường học</label>
-                <SelectWithCustom 
-                  value={university} 
-                  onChange={e => setUniversity(e.target.value)} 
-                  options={UNIVERSITIES} 
-                  placeholder="-- Chọn trường --" 
-                  className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" 
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu mới</label>
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Để trống nếu không đổi"
-                  className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
-              </div>
-
-              {password && (
                 <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</label>
+                  <Input value={currentUser?.email || ''} disabled
+                    className="h-11 rounded-xl border-teal-100 font-paragraph bg-surface text-sm opacity-50" />
+                  <p className="font-paragraph text-xs text-muted-foreground">Email không thể thay đổi</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường học</label>
+                  <SelectWithCustom 
+                    value={university} 
+                    onChange={e => setUniversity(e.target.value)} 
+                    options={UNIVERSITIES} 
+                    placeholder="-- Chọn trường --" 
+                    className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" 
+                  />
+                </div>
+
+                {/* ── Mật khẩu mới ── */}
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu mới</label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Để trống nếu không đổi"
+                    autoComplete="new-password"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
+                  />
+                </div>
+
+                {/*
+                  FIX: luôn render trong DOM, chỉ ẩn bằng CSS khi không cần.
+                  Dùng conditional render ({password && ...}) khiến browser autofill
+                  không trigger onChange của React → state currentPassword luôn rỗng.
+                */}
+                <div className={`space-y-1.5 transition-all ${!password ? 'hidden' : ''}`}>
                   <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại *</label>
-                  <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Nhập mật khẩu hiện tại để xác nhận"
-                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu hiện tại để xác nhận"
+                    autoComplete="current-password"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
+                  />
                   <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc khi đổi mật khẩu mới</p>
                 </div>
-              )}
 
-              {message && (
-                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-paragraph text-sm ${
-                  message.includes('thành công')
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                    : 'bg-red-50 border-red-200 text-red-600'
-                }`}>
-                  {message.includes('thành công') ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                  {message}
+                {message && (
+                  <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-paragraph text-sm ${
+                    message.includes('thành công')
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                      : 'bg-red-50 border-red-200 text-red-600'
+                  }`}>
+                    {message.includes('thành công') ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    {message}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button type="submit" disabled={saving}
+                    className="flex-1 h-11 rounded-xl bg-teal-gradient text-white font-heading font-semibold text-sm shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:translate-y-0">
+                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                  <button type="button" onClick={handleDeleteAccount}
+                    className="h-11 px-4 rounded-xl border border-red-200 bg-red-50 text-red-500 font-heading font-semibold text-sm hover:bg-red-100 transition-colors">
+                    Xóa tài khoản
+                  </button>
                 </div>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button type="submit" disabled={saving}
-                  className="flex-1 h-11 rounded-xl bg-teal-gradient text-white font-heading font-semibold text-sm shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:translate-y-0">
-                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-                <button type="button" onClick={handleDeleteAccount}
-                  className="h-11 px-4 rounded-xl border border-red-200 bg-red-50 text-red-500 font-heading font-semibold text-sm hover:bg-red-100 transition-colors">
-                  Xóa tài khoản
-                </button>
               </div>
-            </div>
-          </form>
-        )}
+            </form>
           </div>
 
           {/* ══ CỘT PHẢI: BÀI ĐĂNG ══ */}
-          <div>
-        {/* ══ TAB: BÀI ĐĂNG ══ */}
-        {true && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <div className="flex gap-1.5 flex-wrap">
@@ -1181,123 +1101,86 @@ const handleDeleteListing = (listing) => {
               </div>
             )}
           </div>
-        )}
-          </div>
         </div>
       </div>
 
       <Footer />
 
       {deleteModal.open && (
-      <>
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
-          onClick={() =>
-            setDeleteModal({
-              open: false,
-              type: null,
-              listing: null,
-            })
-          }
-        />
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteModal({ open: false, type: null, listing: null })}
+          />
 
-        {/* Modal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 24, stiffness: 260 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-        >
-          <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 260 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          >
+            <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+              <div className="h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
 
-            {/* Top Accent */}
-            <div className="h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
-
-            {/* Header */}
-            <div className="border-b border-red-100 bg-gradient-to-b from-red-50/70 to-white px-7 py-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-100">
-                  <Trash2 className="h-7 w-7 text-red-500" />
-                </div>
-
-                <div>
-                  <p className="font-heading text-lg font-bold uppercase text-gray-900">
-                    {deleteModal.type === 'account'
-                      ? 'Xóa tài khoản'
-                      : 'Xóa bài đăng'}
-                  </p>
-
-                  <p className="text-sm text-gray-500 mt-1">
-                    Hành động này không thể hoàn tác.
-                  </p>
+              <div className="border-b border-red-100 bg-gradient-to-b from-red-50/70 to-white px-7 py-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-100">
+                    <Trash2 className="h-7 w-7 text-red-500" />
+                  </div>
+                  <div>
+                    <p className="font-heading text-lg font-bold uppercase text-gray-900">
+                      {deleteModal.type === 'account' ? 'Xóa tài khoản' : 'Xóa bài đăng'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">Hành động này không thể hoàn tác.</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Body */}
-            <div className="px-7 py-6">
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {deleteModal.type === 'account'
-                  ? 'Bạn có chắc chắn muốn xóa tài khoản của mình không?'
-                  : 'Bạn có chắc chắn muốn xóa bài đăng này không?'}
-              </p>
+              <div className="px-7 py-6">
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {deleteModal.type === 'account'
+                    ? 'Bạn có chắc chắn muốn xóa tài khoản của mình không?'
+                    : 'Bạn có chắc chắn muốn xóa bài đăng này không?'}
+                </p>
 
-              {deleteModal.type === 'listing' &&
-                deleteModal.listing && (
+                {deleteModal.type === 'listing' && deleteModal.listing && (
                   <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-red-500 mb-1">
-                      Bài đăng sẽ bị xóa
-                    </p>
-
-                    <p className="font-heading text-sm uppercase text-gray-900">
-                      {deleteModal.listing.item_name}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-red-500 mb-1">Bài đăng sẽ bị xóa</p>
+                    <p className="font-heading text-sm uppercase text-gray-900">{deleteModal.listing.item_name}</p>
                   </div>
                 )}
 
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-xs leading-relaxed text-amber-800">
-                  ⚠️ Dữ liệu sẽ bị xóa khỏi hệ thống và không thể khôi phục.
-                </p>
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-xs leading-relaxed text-amber-800">
+                    ⚠️ Dữ liệu sẽ bị xóa khỏi hệ thống và không thể khôi phục.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+                <button
+                  onClick={() => setDeleteModal({ open: false, type: null, listing: null })}
+                  className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600"
+                >
+                  {deleteModal.type === 'account' ? 'Xóa tài khoản' : 'Xóa bài đăng'}
+                </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
-              <button
-                onClick={() =>
-                  setDeleteModal({
-                    open: false,
-                    type: null,
-                    listing: null,
-                  })
-                }
-                className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-              >
-                Hủy
-              </button>
-
-              <button
-                onClick={confirmDelete}
-                className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600"
-              >
-                {deleteModal.type === 'account'
-                  ? 'Xóa tài khoản'
-                  : 'Xóa bài đăng'}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </>
-    )}
+          </motion.div>
+        </>
+      )}
 
       <AnimatePresence>
-        {/* ✅ Ratings modal — opens when star rating text is clicked */}
         {showRatings && currentUser && (
           <RatingsModal userId={currentUser.id} onClose={() => setShowRatings(false)} />
         )}
