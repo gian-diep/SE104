@@ -52,18 +52,19 @@ def get_listings(
         q = q.filter(Listing.university == university)
 
     if keyword:
+        unaccent = func.unaccent
         q = q.filter(
             or_(
-                func.similarity(Listing.item_name, keyword) > 0.1,
-                func.similarity(Listing.subject, keyword) > 0.1,
-                func.similarity(Listing.keywords, keyword) > 0.1,
-                Listing.item_name.ilike(f"%{keyword}%"),
-                Listing.item_description.ilike(f"%{keyword}%"),
-                Listing.subject.ilike(f"%{keyword}%"),
-                Listing.keywords.ilike(f"%{keyword}%"),
+                func.similarity(unaccent(Listing.item_name), unaccent(keyword)) > 0.3,
+                func.similarity(unaccent(Listing.subject), unaccent(keyword)) > 0.3,
+                func.similarity(unaccent(Listing.keywords), unaccent(keyword)) > 0.3,
+                unaccent(Listing.item_name).ilike(f"%{keyword}%"),
+                unaccent(Listing.item_description).ilike(f"%{keyword}%"),
+                unaccent(Listing.subject).ilike(f"%{keyword}%"),
+                unaccent(Listing.keywords).ilike(f"%{keyword}%"),
             )
         ).order_by(
-            func.similarity(Listing.item_name, keyword).desc()
+            func.similarity(unaccent(Listing.item_name), unaccent(keyword)).desc()
         )
     q = q.order_by(Listing.created_at.desc())
     return q.offset(skip).limit(limit).all()
