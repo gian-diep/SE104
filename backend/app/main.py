@@ -41,9 +41,9 @@ app.include_router(admin_route.router)
 app.include_router(chat_route.router)
 app.include_router(report_route.router)
 
-# ── Mount static — frontend dùng trực tiếp mà không qua route ───────────────
-app.mount("/images",  StaticFiles(directory="uploads/images"),  name="images")   # ← THÊM
-app.mount("/avatars", StaticFiles(directory="uploads/avatars"), name="avatars")  # ← THÊM
+# # ── Mount static — frontend dùng trực tiếp mà không qua route ───────────────
+# app.mount("/images",  StaticFiles(directory="uploads/images"),  name="images")   # ← THÊM
+# app.mount("/avatars", StaticFiles(directory="uploads/avatars"), name="avatars")  # ← THÊM
 
 @app.get("/")
 def home():
