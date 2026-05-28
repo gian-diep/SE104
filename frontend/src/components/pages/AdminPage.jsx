@@ -5,7 +5,8 @@ import {
   AlertTriangle, Eye, LogOut, BarChart3,
   Ban, Trash2, Star, RefreshCw, Search,
   BookOpen, ClipboardList, Banknote, User, Flag, ExternalLink,
-  UserCircle, UserX, MessageSquareWarning, ThumbsUp, ThumbsDown
+  UserCircle, UserX, MessageSquareWarning, ThumbsUp, ThumbsDown,
+  ShieldX, ShieldAlert
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,13 +32,13 @@ function fmtPrice(p) {
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, accent }) {
   return (
-    <div className={`border p-6 flex items-center gap-5 ${accent ? 'border-primary bg-primary/5' : 'border-secondary'}`}>
-      <div className={`w-12 h-12 flex items-center justify-center ${accent ? 'bg-primary/15' : 'bg-secondary/40'}`}>
-        <Icon className={`w-6 h-6 ${accent ? 'text-primary' : 'text-muted-foreground'}`} />
+    <div className={`rounded-2xl border p-5 flex items-center gap-4 shadow-soft transition-all ${accent ? 'border-primary/30 bg-primary/5' : 'border-teal-100 bg-white'}`}>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${accent ? 'bg-primary/15' : 'bg-teal-50'}`}>
+        <Icon className={`w-5 h-5 ${accent ? 'text-primary' : 'text-teal-500'}`} />
       </div>
       <div>
-        <p className="font-paragraph text-xs text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-        <p className="font-heading text-3xl text-foreground">{value}</p>
+        <p className="font-paragraph text-xs text-muted-foreground uppercase tracking-widest mb-0.5">{label}</p>
+        <p className="font-heading text-2xl font-bold text-foreground">{value}</p>
       </div>
     </div>
   )
@@ -45,15 +46,15 @@ function StatCard({ icon: Icon, label, value, accent }) {
 
 function Badge({ status }) {
   const map = {
-    pending:  { label: 'Chờ duyệt',  cls: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
-    approved: { label: 'Đã duyệt',   cls: 'text-green-600 bg-green-500/10 border-green-500/30' },
-    rejected: { label: 'Từ chối',    cls: 'text-red-500 bg-red-500/10 border-red-500/30' },
-    user:     { label: 'Bình thường', cls: 'text-green-600 bg-green-500/10 border-green-500/30' },
-    banned:   { label: 'Đã ban',     cls: 'text-red-600 bg-red-500/10 border-red-500/30' },
+    pending:  { label: 'Chờ duyệt',  cls: 'text-amber-600 bg-amber-50 border-amber-200' },
+    approved: { label: 'Đã duyệt',   cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+    rejected: { label: 'Từ chối',    cls: 'text-red-500 bg-red-50 border-red-200' },
+    user:     { label: 'Bình thường', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+    banned:   { label: 'Đã ban',     cls: 'text-red-600 bg-red-50 border-red-200' },
   }
-  const { label, cls } = map[status] ?? { label: status, cls: 'border-secondary text-muted-foreground' }
+  const { label, cls } = map[status] ?? { label: status, cls: 'border-teal-100 text-muted-foreground' }
   return (
-    <span className={`font-heading text-[10px] uppercase tracking-widest px-2 py-1 border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 font-heading text-[10px] uppercase tracking-wide px-2.5 py-1 rounded-full border ${cls}`}>
       {label}
     </span>
   )
@@ -63,9 +64,9 @@ function Skeleton() {
   return (
     <div className="space-y-3">
       {[1, 2, 3].map(i => (
-        <div key={i} className="border border-secondary p-5 animate-pulse">
-          <div className="h-4 bg-secondary/40 rounded w-1/3 mb-2" />
-          <div className="h-3 bg-secondary/30 rounded w-1/2" />
+        <div key={i} className="rounded-2xl border border-teal-100 bg-white p-5 animate-pulse shadow-soft">
+          <div className="h-4 bg-teal-50 rounded-lg w-1/3 mb-2" />
+          <div className="h-3 bg-teal-50/70 rounded-lg w-1/2" />
         </div>
       ))}
     </div>
@@ -159,21 +160,21 @@ function ModerationTab({ onStatsChange }) {
 
   return (
     <div>
-      <div className="flex flex-wrap border-b border-secondary mb-6">
+      <div className="flex flex-wrap gap-1.5 mb-6">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setFilter(t.id)}
-            className={`px-5 py-3 font-heading text-xs uppercase tracking-widest transition-colors flex items-center gap-2
-              ${filter === t.id ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-heading text-xs font-semibold transition-all ${
+              filter === t.id ? 'bg-teal-gradient text-white shadow-btn' : 'bg-white border border-teal-100 text-muted-foreground hover:text-foreground shadow-soft'
+            }`}>
             {t.label}
             {t.count > 0 && (
-              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-sm
-                ${filter === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${filter === t.id ? 'bg-white/20 text-white' : 'bg-primary text-white'}`}>
                 {t.count}
               </span>
             )}
           </button>
         ))}
-        <button onClick={load} className="ml-auto p-3 text-muted-foreground hover:text-primary transition-colors" title="Làm mới">
+        <button onClick={load} className="ml-auto p-2.5 rounded-xl border border-teal-100 bg-white text-muted-foreground hover:text-primary transition-colors shadow-soft" title="Làm mới">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
@@ -182,17 +183,17 @@ function ModerationTab({ onStatsChange }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Tìm tên tài liệu, môn học..."
-          className="pl-10 h-10 rounded-none border-secondary bg-transparent font-paragraph text-sm" />
+          className="pl-10 h-11 rounded-xl border-teal-100 bg-white font-paragraph text-sm shadow-soft" />
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 font-paragraph text-sm text-red-500">
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 font-paragraph text-sm text-red-600">
           {error} — <button onClick={load} className="underline">Thử lại</button>
         </div>
       )}
 
       {loading ? <Skeleton /> : visible.length === 0 ? (
-        <div className="py-20 flex flex-col items-center justify-center border border-dashed border-secondary text-center">
+        <div className="py-20 flex flex-col items-center justify-center rounded-2xl border border-dashed border-teal-200 bg-white text-center">
           <FileText className="h-10 w-10 text-muted-foreground mb-4 opacity-30" />
           <p className="font-heading text-lg uppercase text-muted-foreground">Không có bài đăng nào</p>
         </div>
@@ -202,7 +203,7 @@ function ModerationTab({ onStatsChange }) {
             const thumb = listing.images?.[0]
             const isBusy = busy[listing.id]
             return (
-              <div key={listing.id} className="border border-secondary hover:border-primary/40 transition-colors">
+              <div key={listing.id} className="bg-white rounded-2xl border border-teal-100 hover:shadow-card shadow-soft overflow-hidden transition-all">
                 <div className="grid grid-cols-12 gap-0">
                   {thumb && (
                     <div className="col-span-2 hidden md:block">
@@ -222,16 +223,16 @@ function ModerationTab({ onStatsChange }) {
                     <div className="flex flex-wrap gap-2 text-xs font-paragraph text-muted-foreground mb-2">
                       <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />Seller #{listing.seller_id}</span>
                       {listing.subject && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-secondary bg-secondary/20">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-100">
                           <BookOpen className="h-3 w-3" />{listing.subject}
                         </span>
                       )}
                       {listing.condition && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-secondary bg-secondary/20">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface border border-border">
                           <ClipboardList className="h-3 w-3" />{listing.condition}
                         </span>
                       )}
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-secondary bg-secondary/20">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100">
                         <Banknote className="h-3 w-3" />{fmtPrice(listing.item_price)}
                       </span>
                     </div>
@@ -240,41 +241,41 @@ function ModerationTab({ onStatsChange }) {
                     )}
                   </div>
 
-                  <div className="col-span-12 md:col-span-3 border-t md:border-t-0 md:border-l border-secondary flex flex-col">
+                  <div className="col-span-12 md:col-span-3 border-t md:border-t-0 md:border-l border-teal-100 flex flex-col">
                     <Link to={`/admin/listings/${listing.id}`} 
-                      className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors border-b border-secondary">
+                      className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-teal-50 transition-colors border-b border-teal-100">
                       <Eye className="h-3.5 w-3.5" />Xem bài
                     </Link>
 
                     {listing.status === 'pending' && (
                       <>
                         <button onClick={() => approve(listing.id)} disabled={isBusy}
-                          className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-green-600 hover:bg-green-500/10 transition-colors border-b border-secondary disabled:opacity-50">
+                          className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-emerald-600 hover:bg-emerald-50 transition-colors border-b border-teal-100 disabled:opacity-50">
                           <CheckCircle className="h-3.5 w-3.5" />{isBusy ? 'Đang xử lý...' : 'Duyệt bài'}
                         </button>
 
                         {rejectOpen[listing.id] ? (
-                          <div className="p-3 border-b border-secondary space-y-2">
+                          <div className="p-3 border-b border-teal-100 space-y-2">
                             <textarea
                               placeholder="Lý do từ chối *"
                               value={rejectReason[listing.id] || ''}
                               onChange={e => setRejectReason(p => ({ ...p, [listing.id]: e.target.value }))}
                               rows={2}
-                              className="w-full text-xs font-paragraph border border-secondary bg-transparent px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-red-500/50 text-foreground" />
+                              className="w-full text-xs font-paragraph border border-teal-100 bg-surface rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground" />
                             <div className="flex gap-2">
                               <button onClick={() => reject(listing.id)} disabled={isBusy}
-                                className="flex-1 py-1.5 bg-red-500 text-white font-heading text-[10px] uppercase tracking-widest hover:bg-red-600 transition-colors disabled:opacity-50">
+                                className="flex-1 py-2 rounded-xl bg-red-500 text-white font-heading text-[10px] uppercase tracking-widest hover:bg-red-600 transition-colors disabled:opacity-50">
                                 Xác nhận
                               </button>
                               <button onClick={() => setRejectOpen(p => ({ ...p, [listing.id]: false }))}
-                                className="px-3 py-1.5 border border-secondary font-heading text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                                className="px-3 py-2 rounded-xl border border-teal-100 font-heading text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                                 Hủy
                               </button>
                             </div>
                           </div>
                         ) : (
                           <button onClick={() => setRejectOpen(p => ({ ...p, [listing.id]: true }))}
-                            className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-colors border-b border-secondary">
+                            className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-red-500 hover:bg-red-50 transition-colors border-b border-teal-100">
                             <XCircle className="h-3.5 w-3.5" />Từ chối
                           </button>
                         )}
@@ -289,7 +290,7 @@ function ModerationTab({ onStatsChange }) {
                             listingName: listing.item_name,
                           })
                         } disabled={isBusy}
-                      className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50">
+                      className="flex items-center gap-2 px-4 py-3 font-heading text-xs uppercase tracking-widest text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50">
                       <Trash2 className="h-3.5 w-3.5" />Xóa bài
                     </button>
                   </div>
@@ -479,12 +480,12 @@ function ReportCard({ report, onResolve, onPunish }) {
   return (
     <div
       className={`
-        relative overflow-hidden border transition-all duration-200
+        relative overflow-hidden rounded-2xl border shadow-soft transition-all duration-200
         ${resolved
-          ? 'border-secondary opacity-60'
+          ? 'border-teal-100 bg-white opacity-60'
           : isHighRisk
-            ? 'border-red-500/40 bg-red-500/[0.03]'
-            : 'border-secondary hover:border-primary/30'
+            ? 'border-red-200 bg-red-50/30'
+            : 'border-teal-100 bg-white hover:shadow-card'
         }
       `}
     >
@@ -498,10 +499,10 @@ function ReportCard({ report, onResolve, onPunish }) {
           <div className="flex items-start gap-3 min-w-0">
             <div
               className={`
-                mt-0.5 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-sm
+                mt-0.5 w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-xl
                 ${isHighRisk && !resolved
-                  ? 'bg-red-500/15 text-red-500'
-                  : 'bg-secondary/60 text-muted-foreground'
+                  ? 'bg-red-100 text-red-500'
+                  : 'bg-teal-50 text-teal-500'
                 }
               `}
             >
@@ -539,7 +540,7 @@ function ReportCard({ report, onResolve, onPunish }) {
           </div>
         </div>
  
-        <div className="border-t border-secondary/60 mb-4" />
+        <div className="border-t border-teal-100 mb-4" />
  
         {/* Report detail */}
         {report.detail && (
@@ -547,7 +548,7 @@ function ReportCard({ report, onResolve, onPunish }) {
             <p className="text-[11px] font-heading uppercase tracking-widest text-muted-foreground mb-2">
               Nội dung báo cáo
             </p>
-            <div className="border border-secondary bg-secondary/10 px-4 py-3">
+            <div className="rounded-xl border border-teal-100 bg-teal-50/30 px-4 py-3">
               <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {report.detail}
               </p>
@@ -557,7 +558,7 @@ function ReportCard({ report, onResolve, onPunish }) {
  
         {/* Admin note nếu có */}
         {report.admin_note && (
-          <div className="mb-4 px-3 py-2 border border-secondary/40 bg-secondary/10">
+          <div className="mb-4 px-3 py-2 rounded-xl border border-blue-100 bg-blue-50/50">
             <p className="text-[10px] font-heading uppercase tracking-widest text-muted-foreground mb-1">Ghi chú admin</p>
             <p className="text-xs text-foreground">{report.admin_note}</p>
           </div>
@@ -569,7 +570,7 @@ function ReportCard({ report, onResolve, onPunish }) {
             <Link
               to={`/listings/${report.listing_id}`}
               target="_blank"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-secondary text-[11px] font-heading uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors duration-150"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-100 bg-white text-[11px] font-heading uppercase tracking-widest text-muted-foreground hover:text-primary hover:border-primary/30 shadow-soft transition-colors duration-150"
             >
               <ExternalLink className="w-3 h-3" />
               Xem bài đăng
@@ -579,7 +580,7 @@ function ReportCard({ report, onResolve, onPunish }) {
           <Link
             to={`/nguoi-dung/${report.reported_user_id}`}
             target="_blank"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-secondary text-[11px] font-heading uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors duration-150"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-100 bg-white text-[11px] font-heading uppercase tracking-widest text-muted-foreground hover:text-primary hover:border-primary/30 shadow-soft transition-colors duration-150"
           >
             <UserCircle className="w-3 h-3" />
             Xem tài khoản
@@ -589,7 +590,7 @@ function ReportCard({ report, onResolve, onPunish }) {
           {!resolved && (
             <button
               onClick={() => setPunishOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-orange-500/40 bg-orange-500/5 text-[11px] font-heading uppercase tracking-widest text-orange-600 hover:bg-orange-500/10 hover:border-orange-500/60 transition-all duration-150"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-[11px] font-heading uppercase tracking-widest text-amber-600 hover:bg-amber-100 transition-all duration-150"
             >
               <AlertTriangle className="w-3 h-3" />
               Xử phạt
@@ -599,7 +600,7 @@ function ReportCard({ report, onResolve, onPunish }) {
           {!resolved && (
             <button
               onClick={() => onResolve(report.id)}
-              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 border border-green-500/40 bg-green-500/5 text-[11px] font-heading uppercase tracking-widest text-green-600 hover:bg-green-500/10 hover:border-green-500/60 transition-all duration-150"
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-heading uppercase tracking-widest text-emerald-600 hover:bg-emerald-100 transition-all duration-150"
             >
               <CheckCircle className="w-3 h-3" />
               Đánh dấu xử lý
@@ -631,35 +632,72 @@ function ReportCard({ report, onResolve, onPunish }) {
             <div className="px-7 py-6 space-y-4">
               {/* Chọn hành động */}
               <div>
-                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-3">Chọn hình thức xử phạt</p>
+                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-3">
+                  Chọn hình thức xử phạt
+                </p>
+
                 <div className="space-y-2">
                   {[
-                    { value: 'warn', label: '⚠️ Gửi cảnh cáo', desc: 'Không hạn chế tài khoản, chỉ ghi nhận vi phạm' },
-                    { value: 'ban_7days', label: '🚫 Ban 7 ngày', desc: 'Tài khoản bị hạn chế trong 7 ngày' },
-                    { value: 'ban_permanent', label: '⛔ Ban vĩnh viễn', desc: 'Tài khoản bị khoá không thời hạn' },
-                  ].map(opt => (
-                    <label
-                      key={opt.value}
-                      className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
-                        punishAction === opt.value
-                          ? 'border-orange-400 bg-orange-50'
-                          : 'border-gray-200 hover:border-orange-200 hover:bg-orange-50/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="punishAction"
-                        value={opt.value}
-                        checked={punishAction === opt.value}
-                        onChange={() => setPunishAction(opt.value)}
-                        className="mt-0.5"
-                      />
-                      <div>
-                        <p className="text-sm font-heading uppercase tracking-wide text-gray-900">{opt.label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
-                      </div>
-                    </label>
-                  ))}
+                    {
+                      value: 'warn',
+                      label: 'Gửi cảnh cáo',
+                      desc: 'Không hạn chế tài khoản, chỉ ghi nhận vi phạm',
+                      icon: AlertTriangle,
+                      iconClass: 'text-yellow-500',
+                    },
+                    {
+                      value: 'ban_7days',
+                      label: 'Ban 7 ngày',
+                      desc: 'Tài khoản bị hạn chế trong 7 ngày',
+                      icon: ShieldAlert,
+                      iconClass: 'text-orange-500',
+                    },
+                    {
+                      value: 'ban_permanent',
+                      label: 'Ban vĩnh viễn',
+                      desc: 'Tài khoản bị khoá không thời hạn',
+                      icon: ShieldX,
+                      iconClass: 'text-red-500',
+                    },
+                  ].map(opt => {
+                    const Icon = opt.icon
+
+                    return (
+                      <label
+                        key={opt.value}
+                        className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
+                          punishAction === opt.value
+                            ? 'border-orange-400 bg-orange-50'
+                            : 'border-gray-200 hover:border-orange-200 hover:bg-orange-50/50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="punishAction"
+                          value={opt.value}
+                          checked={punishAction === opt.value}
+                          onChange={() => setPunishAction(opt.value)}
+                          className="mt-1"
+                        />
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0">
+                            <Icon className={`w-4 h-4 ${opt.iconClass}`} />
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-heading uppercase tracking-wide text-gray-900">
+                              {opt.label}
+                            </p>
+
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {opt.desc}
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
  
@@ -673,7 +711,7 @@ function ReportCard({ report, onResolve, onPunish }) {
                   onChange={e => setPunishNote(e.target.value)}
                   placeholder="Lý do xử phạt, bằng chứng vi phạm..."
                   rows={3}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400/40 focus:border-orange-400"
+                  className="w-full text-sm border border-teal-100 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 bg-surface font-paragraph"
                 />
               </div>
             </div>
@@ -798,7 +836,7 @@ function ReportTab() {
         </div>
  
         {/* Filter pills */}
-        <div className="flex items-center gap-1 border border-secondary p-0.5">
+        <div className="flex items-center gap-1.5">
           {[
             { id: 'all', label: 'Tất cả' },
             { id: 'pending', label: 'Chờ xử lý' },
@@ -807,13 +845,11 @@ function ReportTab() {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`
-                px-4 py-1.5 text-[11px] font-heading uppercase tracking-widest transition-colors duration-150
-                ${filter === f.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-                }
-              `}
+              className={`px-4 py-2 rounded-xl text-[11px] font-heading uppercase tracking-widest transition-all ${
+                filter === f.id
+                  ? 'bg-teal-gradient text-white shadow-btn'
+                  : 'bg-white border border-teal-100 text-muted-foreground hover:text-foreground shadow-soft'
+              }`}
             >
               {f.label}
             </button>
@@ -823,7 +859,7 @@ function ReportTab() {
  
       {/* Report list */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground border border-dashed border-secondary">
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground rounded-2xl border border-dashed border-teal-200 bg-white">
           <Flag className="w-8 h-8 opacity-20" />
           <p className="text-sm font-heading uppercase tracking-widest opacity-50">
             Không có báo cáo nào
@@ -924,21 +960,21 @@ function UsersTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm theo tên, email, trường..."
-            className="pl-10 h-10 rounded-none border-secondary bg-transparent font-paragraph text-sm" />
+            className="pl-10 h-11 rounded-xl border-teal-100 bg-white font-paragraph text-sm shadow-soft" />
         </div>
-        <button onClick={load} className="p-2 text-muted-foreground hover:text-primary transition-colors" title="Làm mới">
+        <button onClick={load} className="p-2.5 rounded-xl border border-teal-100 bg-white text-muted-foreground hover:text-primary transition-colors shadow-soft" title="Làm mới">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 font-paragraph text-sm text-red-500">
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 font-paragraph text-sm text-red-600">
           {error} — <button onClick={load} className="underline">Thử lại</button>
         </div>
       )}
 
-      <div className="border border-secondary">
-        <div className="hidden md:grid grid-cols-12 gap-0 border-b border-secondary bg-secondary/20 px-4 py-3">
+      <div className="rounded-2xl border border-teal-100 bg-white shadow-soft overflow-hidden">
+        <div className="hidden md:grid grid-cols-12 gap-0 border-b border-teal-100 bg-teal-50/50 px-4 py-3">
           <div className="col-span-4 font-heading text-xs uppercase tracking-widest text-muted-foreground">Người dùng</div>
           <div className="col-span-3 font-heading text-xs uppercase tracking-widest text-muted-foreground">Trường</div>
           <div className="col-span-2 font-heading text-xs uppercase tracking-widest text-muted-foreground">Trạng thái</div>
@@ -955,7 +991,7 @@ function UsersTab() {
         ) : (
           filtered.map((user, i) => (
             <div key={user.id}
-              className={`grid grid-cols-12 gap-0 px-4 py-4 items-center ${i < filtered.length - 1 ? 'border-b border-secondary' : ''} hover:bg-secondary/10 transition-colors`}>
+              className={`grid grid-cols-12 gap-0 px-4 py-4 items-center ${i < filtered.length - 1 ? 'border-b border-teal-100' : ''} hover:bg-teal-50/30 transition-colors`}>
               <div className="col-span-12 md:col-span-4 mb-2 md:mb-0">
                 <p className="font-heading text-sm uppercase">{user.username}</p>
                 <p className="font-paragraph text-xs text-muted-foreground">{user.email}</p>
@@ -1146,9 +1182,9 @@ function AppealTab({ onCountChange }) {
   const filtered = filter === 'all' ? appeals : appeals.filter(a => a.status === filter)
 
   const STATUS_STYLES = {
-    pending:  { bg: 'bg-yellow-100 text-yellow-700',  label: 'Đang chờ' },
-    approved: { bg: 'bg-green-100  text-green-700',   label: 'Đã chấp thuận' },
-    rejected: { bg: 'bg-red-100    text-red-700',     label: 'Đã từ chối' },
+    pending:  { bg: 'bg-amber-50 text-amber-700 border border-amber-200',    label: 'Đang chờ' },
+    approved: { bg: 'bg-emerald-50 text-emerald-700 border border-emerald-200', label: 'Đã chấp thuận' },
+    rejected: { bg: 'bg-red-50 text-red-700 border border-red-200',            label: 'Đã từ chối' },
   }
 
   if (loading) return (
@@ -1160,7 +1196,7 @@ function AppealTab({ onCountChange }) {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl">{error}</div>
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 font-paragraph text-sm text-red-600">{error}</div>
       )}
 
       {/* Filter bar */}
@@ -1175,17 +1211,17 @@ function AppealTab({ onCountChange }) {
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading transition-all
-              ${filter === f.id ? 'bg-primary text-primary-foreground shadow-btn' : 'bg-surface text-muted-foreground hover:text-foreground border border-secondary'}`}
+              ${filter === f.id ? 'bg-teal-gradient text-white shadow-btn' : 'bg-white text-muted-foreground hover:text-foreground border border-teal-100 shadow-soft'}`}
           >
             {f.label}
             {f.count > 0 && (
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-sm ${filter === f.id ? 'bg-white/20 text-white' : 'bg-secondary'}`}>
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${filter === f.id ? 'bg-white/20 text-white' : 'bg-primary text-white'}`}>
                 {f.count}
               </span>
             )}
           </button>
         ))}
-        <button onClick={load} className="ml-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-secondary text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={load} className="ml-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-teal-100 text-sm text-muted-foreground hover:text-primary shadow-soft transition-colors">
           <RefreshCw className="h-3.5 w-3.5" /> Làm mới
         </button>
       </div>
@@ -1206,7 +1242,7 @@ function AppealTab({ onCountChange }) {
           const isOpen = reviewOpen[appeal.id]
 
           return (
-            <div key={appeal.id} className="bg-surface border border-secondary rounded-2xl overflow-hidden">
+            <div key={appeal.id} className="bg-white border border-teal-100 rounded-2xl overflow-hidden shadow-soft hover:shadow-card transition-all">
               <div className="p-6 space-y-4">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4">
@@ -1224,7 +1260,7 @@ function AppealTab({ onCountChange }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${st.bg}`}>{st.label}</span>
+                    <span className={`text-xs font-heading font-semibold px-3 py-1 rounded-full uppercase tracking-wide ${st.bg}`}>{st.label}</span>
                     <span className="text-xs text-muted-foreground">
                       {new Date(appeal.created_at).toLocaleDateString('vi-VN')}
                     </span>
@@ -1232,7 +1268,7 @@ function AppealTab({ onCountChange }) {
                 </div>
 
                 {/* Ban info */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
                   <Ban className="h-3.5 w-3.5 text-red-500 shrink-0" />
                   <p className="font-paragraph text-xs text-red-700">
                     {appeal.ban_until
@@ -1249,7 +1285,7 @@ function AppealTab({ onCountChange }) {
 
                 {/* Admin note nếu đã xử lý */}
                 {appeal.admin_note && (
-                  <div className="px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
+                  <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
                     <p className="font-heading text-xs uppercase tracking-widest text-blue-600 mb-1">Phản hồi Admin</p>
                     <p className="font-paragraph text-sm text-blue-800">{appeal.admin_note}</p>
                   </div>
@@ -1266,7 +1302,7 @@ function AppealTab({ onCountChange }) {
                         Xem xét khiếu nại
                       </button>
                     ) : (
-                      <div className="space-y-3 pt-2 border-t border-secondary">
+                      <div className="space-y-3 pt-2 border-t border-teal-100">
                         <div className="space-y-1.5">
                           <label className="font-heading text-xs uppercase tracking-widest text-muted-foreground">
                             Ghi chú phản hồi (tuỳ chọn)
@@ -1276,7 +1312,7 @@ function AppealTab({ onCountChange }) {
                             onChange={e => setReviewNote(n => ({ ...n, [appeal.id]: e.target.value }))}
                             placeholder="Nhập lý do chấp thuận hoặc từ chối..."
                             rows={3}
-                            className="w-full rounded-xl border border-secondary bg-background font-paragraph text-sm px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                            className="w-full rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                           />
                         </div>
                         <div className="flex items-center gap-3">
@@ -1298,7 +1334,7 @@ function AppealTab({ onCountChange }) {
                           </button>
                           <button
                             onClick={() => setReviewOpen(r => ({ ...r, [appeal.id]: false }))}
-                            className="px-4 py-2.5 rounded-xl border border-secondary text-muted-foreground font-heading text-xs uppercase tracking-widest hover:text-foreground transition-colors"
+                            className="px-4 py-2.5 rounded-xl border border-teal-100 text-muted-foreground font-heading text-xs uppercase tracking-widest hover:text-foreground transition-colors"
                           >
                             Huỷ
                           </button>
@@ -1395,7 +1431,7 @@ function AppealTab({ onCountChange }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-secondary bg-background sticky top-0 z-50">
+      <header className="border-b border-teal-100 bg-background sticky top-0 z-50 shadow-soft">
         <div className="max-w-[120rem] mx-auto px-6 md:px-12 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="font-heading text-xl uppercase text-foreground hover:text-primary transition-colors">Bookycle</Link>
@@ -1452,9 +1488,12 @@ function AppealTab({ onCountChange }) {
       </header>
 
       <div className="max-w-[120rem] mx-auto px-6 md:px-12 py-10">
-        <div className="mb-10 pb-8 border-b border-secondary">
-          <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-3">[ Quản trị hệ thống ]</p>
-          <h1 className="font-heading text-5xl md:text-6xl uppercase tracking-tighter">Admin Panel</h1>
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 bg-teal-50 text-primary px-3 py-1.5 rounded-full border border-teal-200 text-xs font-heading font-semibold uppercase tracking-wide mb-3">
+            <Shield className="w-3.5 h-3.5" />
+            Quản trị hệ thống
+          </div>
+          <h1 className="font-heading text-4xl md:text-5xl font-black tracking-tighter text-foreground">ADMIN PANEL</h1>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -1464,16 +1503,18 @@ function AppealTab({ onCountChange }) {
           <StatCard icon={BarChart3}   label="Tổng bài đăng" value={stats.total} />
         </div>
 
-        <div className="flex border-b border-secondary mb-8">
+        <div className="flex gap-1.5 flex-wrap mb-8 p-1.5 bg-white rounded-2xl border border-teal-100 shadow-soft w-fit">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-4 font-heading text-sm uppercase tracking-widest transition-colors
-                ${activeTab === tab.id ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading text-sm font-semibold transition-all ${
+                activeTab === tab.id ? 'bg-teal-gradient text-white shadow-btn' : 'text-muted-foreground hover:text-foreground hover:bg-surface'
+              }`}>
               <tab.icon className="h-4 w-4" />
               {tab.label}
               {tab.badge > 0 && (
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-sm
-                  ${activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                  activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary text-white'
+                }`}>
                   {tab.badge}
                 </span>
               )}

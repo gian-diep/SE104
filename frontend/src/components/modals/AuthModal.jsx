@@ -38,6 +38,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
   const [regPassword, setRegPassword] = useState('')
   const [regConfirm, setRegConfirm] = useState('')
   const [regUniversity, setRegUniversity] = useState('')
+  const [regCustomUniversity, setRegCustomUniversity] = useState('')
 
   // ── Ban Appeal state ──────────────────────────────────────────────────────
   const [banInfo, setBanInfo] = useState(null)          // { userId, banUntil? }
@@ -55,7 +56,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
   const reset_form = () => {
     setError(''); setShowPassword(false)
     setLoginEmail(''); setLoginPassword('')
-    setRegName(''); setRegEmail(''); setRegPassword(''); setRegConfirm(''); setRegUniversity('')
+    setRegName(''); setRegEmail(''); setRegPassword(''); setRegConfirm(''); setRegUniversity(''); setRegCustomUniversity('')
     setBanInfo(null); setAppealView('check'); setAppealText(''); setAppealData(null)
   }
 
@@ -145,11 +146,30 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
   const handleRegister = async (e) => {
     e.preventDefault()
     setError('')
+    
     if (regPassword !== regConfirm) { setError('Mật khẩu xác nhận không khớp'); return }
     if (regPassword.length < 6) { setError('Mật khẩu phải có ít nhất 6 ký tự'); return }
+    
+    // 1. Thêm bắt lỗi chưa chọn trường
+    if (!regUniversity) { 
+      setError('Vui lòng chọn trường đại học'); 
+      return 
+    }
+    
+    // 2. Thêm bắt lỗi chọn "Trường khác" nhưng để trống ô nhập
+    if (regUniversity === 'Trường khác' && !regCustomUniversity.trim()) {
+      setError('Vui lòng nhập tên trường đại học của bạn');
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      await register(regName, regEmail, regPassword, regUniversity)
+      const finalUniversity =
+        regUniversity === 'Trường khác'
+          ? regCustomUniversity.trim() // Thêm .trim() để xoá khoảng trắng thừa
+          : regUniversity
+
+      await register(regName, regEmail, regPassword, finalUniversity)
       reset_form(); onClose(); navigate('/')
     } catch (err) {
       setError(err.message)
@@ -454,12 +474,31 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
                     <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường đại học</label>
                     <select
                       value={regUniversity}
-                      onChange={e => setRegUniversity(e.target.value)}
+                      onChange={e => {
+                        setRegUniversity(e.target.value)
+                        if (e.target.value !== 'Trường khác') {
+                          setRegCustomUniversity('')
+                        }
+                      }}
                       className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                     >
                       <option value="">-- Chọn trường --</option>
                       {UNIVERSITIES.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
+                    {regUniversity === 'Trường khác' && (
+                      <div className="space-y-1.5 mt-2">
+                        <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                          Nhập tên trường
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="VD: Đại học FPT, Cao đẳng ABC..."
+                          value={regCustomUniversity}
+                          onChange={e => setRegCustomUniversity(e.target.value)}
+                          className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

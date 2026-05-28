@@ -18,6 +18,125 @@ const UNIVERSITIES = [
   'Đại học Mở TP.HCM', 'Trường khác',
 ]
 
+const SUBJECTS = [
+  'An toàn thông tin',
+  'Bài chế học',
+  'Bảo vệ thực vật',
+  'Bệnh học ngoại khoa',
+  'Bệnh học nội khoa',
+  'Chăn nuôi học',
+  'Chẩn đoán hình ảnh',
+  'Chủ nghĩa xã hội khoa học',
+  'Cơ học kỹ thuật',
+  'Cơ học lượng tử',
+  'Cơ sở dữ liệu',
+  'Công nghệ phần mềm',
+  'Công nghệ thực phẩm',
+  'Công pháp quốc tế',
+  'Cấu trúc dữ liệu và giải thuật',
+  'DevOps',
+  'Dược liệu học',
+  'Dược lý học',
+  'Đại số tuyến tính',
+  'Điều dưỡng cơ bản',
+  'Điện tử cơ bản',
+  'Điện tử số',
+  'Điện toán đám mây',
+  'Đầu tư tài chính',
+  'Đồ họa máy tính',
+  'Giải phẫu học',
+  'Giải tích 1',
+  'Giải tích 2',
+  'Giải tích 3',
+  'Giáo dục học',
+  'Hành vi tổ chức',
+  'Hệ điều hành',
+  'Hệ quản trị cơ sở dữ liệu',
+  'Hóa học đại cương',
+  'Hóa hữu cơ',
+  'Hóa lý',
+  'Hóa phân tích',
+  'Hóa sinh',
+  'Hóa vô cơ',
+  'Học máy',
+  'Kế toán đại cương',
+  'Kế toán tài chính',
+  'Kế toán quản trị',
+  'Khoa học đất',
+  'Kinh doanh quốc tế',
+  'Kinh tế chính trị Mác-Lênin',
+  'Kinh tế lượng',
+  'Kinh tế vĩ mô',
+  'Kinh tế vi mô',
+  'Kiểm thử phần mềm',
+  'Kiến trúc máy tính',
+  'Kỹ thuật cơ khí',
+  'Kỹ thuật điện',
+  'Kỹ thuật lập trình',
+  'Lâm nghiệp đại cương',
+  'Lập trình C',
+  'Lập trình hướng đối tượng',
+  'Lập trình Java',
+  'Lập trình Python',
+  'Lịch sử Đảng Cộng sản Việt Nam',
+  'Lý luận nhà nước và pháp luật',
+  'Lý thuyết mạch',
+  'Luật dân sự',
+  'Luật hành chính',
+  'Luật hiến pháp',
+  'Luật hình sự',
+  'Luật hôn nhân và gia đình',
+  'Luật lao động',
+  'Luật quốc tế',
+  'Luật thương mại',
+  'Luật tố tụng hình sự',
+  'Marketing căn bản',
+  'Marketing quốc tế',
+  'Mạng máy tính',
+  'Mô phôi học',
+  'Nhập môn lập trình',
+  'Nhúng hệ thống',
+  'Nhiệt động lực học',
+  'Pháp luật đại cương',
+  'Phát triển ứng dụng di động',
+  'Phát triển ứng dụng web',
+  'Phương pháp dạy học Hóa',
+  'Phương pháp dạy học Lý',
+  'Phương pháp dạy học tiếng Anh',
+  'Phương pháp dạy học Toán',
+  'Phương pháp dạy học Văn',
+  'Phương trình vi phân',
+  'Quản trị doanh nghiệp',
+  'Quản trị học',
+  'Quản trị nhân lực',
+  'Sinh học đại cương',
+  'Sinh lý học',
+  'Sinh thái học',
+  'Sức bền vật liệu',
+  'Thị giác máy tính',
+  'Thống kê kinh tế',
+  'Thương mại điện tử',
+  'Thủy sản đại cương',
+  'Tiếng Anh',
+  'Tài chính doanh nghiệp',
+  'Tâm lý học giáo dục',
+  'Tín hiệu và hệ thống',
+  'Toán ứng dụng',
+  'Triết học Mác-Lênin',
+  'Trí tuệ nhân tạo',
+  'Trồng trọt học',
+  'Tư pháp quốc tế',
+  'Tư tưởng Hồ Chí Minh',
+  'Vi điều khiển',
+  'Vi sinh vật học',
+  'Vật lý đại cương A1',
+  'Vật lý đại cương A2',
+  'Vật lý lý thuyết',
+  'Xác suất thống kê',
+  'Xử lý ngôn ngữ tự nhiên',
+  'Khác',
+]
+
 function FormLabel({ children, required }) {
   return (
     <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
@@ -28,16 +147,53 @@ function FormLabel({ children, required }) {
 }
 
 function SelectField({ value, onChange, options, placeholder, required }) {
+  const sentinel = options[options.length - 1]
+  const CUSTOM_SENTINELS = ['Khác', 'Trường khác']
+  const supportsCustom = CUSTOM_SENTINELS.includes(sentinel)
+
+  // customMode: true khi đang nhập tay, false khi chọn từ list
+  const [customMode, setCustomMode] = useState(false)
+
+  // Nếu value từ bên ngoài không nằm trong list → vào custom mode (khi load lại bài đã lưu)
+  const isCustom = supportsCustom && (customMode || (value !== '' && !options.includes(value)))
+
+  const handleSelectChange = (e) => {
+    if (supportsCustom && e.target.value === sentinel) {
+      setCustomMode(true)
+      onChange({ target: { value: '' } })
+    } else {
+      setCustomMode(false)
+      onChange(e)
+    }
+  }
+
+  const handleCustomInput = (e) => {
+    onChange(e)
+  }
+
   return (
-    <select
-      value={value}
-      onChange={onChange}
-      required={required}
-      className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-    >
-      <option value="">{placeholder}</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <div className="space-y-2">
+      <select
+        value={isCustom ? sentinel : value}
+        onChange={handleSelectChange}
+        required={required && !isCustom}
+        className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+      >
+        <option value="">{placeholder}</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+      {isCustom && (
+        <input
+          type="text"
+          value={value}
+          onChange={handleCustomInput}
+          required={required}
+          placeholder={`Nhập ${sentinel === 'Trường khác' ? 'tên trường' : 'tên môn học'}...`}
+          autoFocus
+          className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+        />
+      )}
+    </div>
   )
 }
 
@@ -140,7 +296,7 @@ export default function CreateListingPage() {
         item_description: form.itemDescription.trim() || null,
         category:         form.category,
         condition:        form.condition,
-        subject:          form.subject.trim() || null,
+        subject:          form.subject || null,
         university:       form.university || null,
         keywords:         form.keywords.trim() || null,
         images:           form.images.map(img => img.imageId),
@@ -250,8 +406,7 @@ export default function CreateListingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <FormLabel>Môn học</FormLabel>
-                  <Input value={form.subject} onChange={set('subject')} placeholder="VD: Giải tích, Lập trình C++"
-                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                  <SelectField value={form.subject} onChange={set('subject')} options={SUBJECTS} placeholder="-- Chọn tên môn học --" customLabel="Khác" />
                 </div>
                 <div className="space-y-1.5">
                   <FormLabel>Giá (VNĐ)</FormLabel>
@@ -262,7 +417,7 @@ export default function CreateListingPage() {
 
               <div className="space-y-1.5">
                 <FormLabel>Trường đại học</FormLabel>
-                <SelectField value={form.university} onChange={set('university')} options={UNIVERSITIES} placeholder="-- Chọn trường --" />
+                <SelectField value={form.university} onChange={set('university')} options={UNIVERSITIES} placeholder="-- Chọn trường --" customLabel="Trường khác" />
               </div>
             </div>
 

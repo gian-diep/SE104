@@ -389,7 +389,7 @@ export default function Header() {
                               <div className="min-w-0">
                                 <p className="font-heading text-sm font-bold text-foreground truncate">{currentUser.username}</p>
                                 <p className="font-paragraph text-[11px] text-primary font-medium">
-                                  {currentUser.role === 'admin' ? '👑 Admin' : '✦ Thành viên'}
+                                  {currentUser.role === 'admin' ? <><ShieldCheck className="h-3.5 w-3.5 inline mr-1" />Admin</> : '✦ Thành viên'}
                                 </p>
                               </div>
                             </div>
