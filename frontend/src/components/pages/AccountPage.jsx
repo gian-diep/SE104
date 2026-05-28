@@ -709,8 +709,8 @@ export default function AccountPage() {
         avatarUrl = res.avatar_id
       }
       await updateProfile({
-        username:   username.trim() || undefined,
-        university: university.trim() || undefined,
+        username:   username.trim() || currentUser.username,
+        university: university.trim() || currentUser.university,
         avatar_url: avatarUrl,
         password:   password || undefined,
       })
