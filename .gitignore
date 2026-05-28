@@ -1,0 +1,8 @@
+venv/
+.venv/
+env/
+.env/
+backend/venv
+backend/.venv
+frontend/venv
+frontend/.venv
