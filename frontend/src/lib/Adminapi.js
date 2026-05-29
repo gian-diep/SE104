@@ -42,10 +42,10 @@ export async function adminRejectListing(listingId, reason = "") {
 }
 
 /**
- * Xóa bài đăng
+ * Xóa bài đăng (admin) — đóng chat session liên quan nếu đang thương lượng
  */
 export async function adminDeleteListing(listingId) {
-  return apiFetch(`/listings/${listingId}`, { method: "DELETE" })
+  return apiFetch(`/admin/listings/${listingId}`, { method: "DELETE" })
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

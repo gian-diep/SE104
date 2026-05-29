@@ -99,11 +99,12 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
   }
 
   // ── Derived state ────────────────────────────────────────────────────────
-  const isClosed     = session?.status === 'closed'
-  const isCompleted  = isClosed && session?.close_reason === 'completed'
-  const isSeller     = currentUser?.id === session?.seller_id
-  const hasConfirmed = isSeller ? session?.seller_confirmed : session?.buyer_confirmed
-  const hasRated     = isSeller ? session?.seller_rated : session?.buyer_rated
+  const isClosed       = session?.status === 'closed'
+  const isCompleted    = isClosed && session?.close_reason === 'completed'
+  const isDeletedByAdmin = isClosed && session?.close_reason === 'deleted_by_admin'
+  const isSeller       = currentUser?.id === session?.seller_id
+  const hasConfirmed   = isSeller ? session?.seller_confirmed : session?.buyer_confirmed
+  const hasRated       = isSeller ? session?.seller_rated : session?.buyer_rated
 
   if (!isOpen || !session) return null
 
@@ -241,6 +242,15 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
               <div className="flex items-center gap-2 px-6 py-2.5 bg-green-500/10 border-b border-green-500/20 flex-shrink-0">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <p className="font-paragraph text-xs text-green-600">Bạn đã gửi đánh giá cho giao dịch này.</p>
+              </div>
+            )}
+
+            {isDeletedByAdmin && (
+              <div className="flex items-center gap-2 px-6 py-3 bg-red-50 border-b border-red-200 flex-shrink-0">
+                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="font-paragraph text-sm text-red-600 font-medium">
+                  Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.
+                </p>
               </div>
             )}
 
