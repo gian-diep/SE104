@@ -437,17 +437,8 @@ export default function HomePage() {
   const knownSubjects = SUBJECTS.filter(s => s !== 'Khác')
 
   const filteredUsers = useMemo(() => {
-    return users.filter(u => {
-      if (userSearchQuery) {
-        const q = userSearchQuery.toLowerCase()
-
-        const fullName = (
-          `${u.username || ''}}`
-        ).toLowerCase()
-
-        if (!fullName.includes(q)) return false
-      }
-
+    const base = userSearchResults !== null ? userSearchResults : users
+    return base.filter(u => {
       if (userUniversityFilter !== 'all') {
         if (userUniversityFilter === 'Khác') {
           if (knownUniversities.includes(u.university)) return false
@@ -455,14 +446,15 @@ export default function HomePage() {
           if (u.university !== userUniversityFilter) return false
         }
       }
-
       return true
     })
-  }, [users, userSearchQuery, userUniversityFilter])
+  }, [users, userSearchResults, userUniversityFilter, knownUniversities])
 
   const searchSectionRef = useRef(null)
-  const [searchResults, setSearchResults] = useState(null) // null = chưa search, array = có kết quả từ backend
+  const [searchResults, setSearchResults] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [userSearchResults, setUserSearchResults] = useState(null)
+  const [userSearchLoading, setUserSearchLoading] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -486,7 +478,7 @@ export default function HomePage() {
     loadData()
   }, [])
 
-  // Gọi backend search khi searchQuery thay đổi (debounce 400ms)
+  // Debounce search listing — 250ms
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults(null)
@@ -503,9 +495,30 @@ export default function HomePage() {
       } finally {
         setSearchLoading(false)
       }
-    }, 400)
+    }, 250)
     return () => clearTimeout(timer)
   }, [searchQuery])
+
+  // Debounce search user — 250ms
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setUserSearchResults(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      setUserSearchLoading(true)
+      try {
+        const data = await getUsers({ search: userSearchQuery.trim() })
+        setUserSearchResults(data)
+      } catch (err) {
+        console.error('User search failed:', err)
+        setUserSearchResults([])
+      } finally {
+        setUserSearchLoading(false)
+      }
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [userSearchQuery])
 
   const usersMap = useMemo(() => {
     const m = {}
@@ -741,7 +754,7 @@ export default function HomePage() {
               </div>
               <div className="bg-white rounded-xl border border-teal-100 px-4 py-2 shadow-soft">
                 <p className="font-paragraph text-sm text-muted-foreground">
-                  {searchLoading ? (
+                  {(searchMode === 'listing' ? searchLoading : userSearchLoading) ? (
                     <span className="text-primary">Đang tìm...</span>
                   ) : (
                     <><span className="font-bold text-primary">
@@ -898,7 +911,7 @@ export default function HomePage() {
                     </div>
 
                     {(userSearchQuery || userUniversityFilter !== 'all') && (
-                      <button onClick={() => { setUserSearchQuery(''); setUserUniversityFilter('all') }}
+                      <button onClick={() => { setUserSearchQuery(''); setUserUniversityFilter('all'); setUserSearchResults(null) }}
                         className="w-full py-2 rounded-xl border border-teal-200 font-heading text-xs font-semibold text-muted-foreground hover:text-primary hover:border-primary transition-colors">
                         Xóa bộ lọc
                       </button>
@@ -908,7 +921,15 @@ export default function HomePage() {
 
                 {/* Users grid */}
                 <div className="col-span-12 lg:col-span-9 min-h-[60vh]">
-                  {filteredUsers.length > 0 ? (
+                  {userSearchLoading ? (
+                    <div className="py-20 flex flex-col items-center gap-3">
+                      <div className="relative w-8 h-8">
+                        <div className="absolute inset-0 rounded-full border-4 border-teal-100" />
+                        <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+                      </div>
+                      <p className="font-paragraph text-sm text-muted-foreground">Đang tìm...</p>
+                    </div>
+                  ) : filteredUsers.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                       <AnimatePresence mode="popLayout">
                         {filteredUsers.map((user, index) => <UserCard key={user.id} user={user} index={index} />)}

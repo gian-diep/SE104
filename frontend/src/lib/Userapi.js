@@ -48,8 +48,11 @@ export async function uploadAvatar(file) {
   return res.json() // { avatar_id, url }
 }
 
-export async function getUsers() {
-  const res = await fetch(`${API_URL}/users`)
+export async function getUsers(params = {}) {
+  const q = new URLSearchParams()
+  if (params.search) q.set('search', params.search)
+  const qs = q.toString()
+  const res = await fetch(`${API_URL}/users${qs ? '?' + qs : ''}`)
 
   if (!res.ok) {
     throw new Error('Không thể lấy danh sách user')
