@@ -414,6 +414,7 @@ function RatingsModal({ userId, onClose }) {
 }
 
 // ── Edit Panel ────────────────────────────────────────────────────────────────
+// ── Edit Panel ────────────────────────────────────────────────────────────────
 function EditPanel({ listing, onClose, onSaved }) {
   const isResubmit = listing.status === 'rejected'
 
@@ -427,11 +428,42 @@ function EditPanel({ listing, onClose, onSaved }) {
     university:       listing.university       || '',
     keywords:         listing.keywords         || '',
   })
+
+  // ── Image state ───────────────────────────────────────────────────────────
+  const [images, setImages]           = useState(listing.images || [])   // existing IDs
+  const [newFiles, setNewFiles]       = useState([])                      // File objects to upload
+  const [newPreviews, setNewPreviews] = useState([])                      // data-URL previews
+  const [uploadingIdx, setUploadingIdx] = useState(null)                  // which new img is uploading
+
   const [error, setError]   = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
 
   const set = f => e => setForm(p => ({ ...p, [f]: e.target.value }))
+
+  // Remove an existing image
+  const removeExisting = (idx) => setImages(prev => prev.filter((_, i) => i !== idx))
+
+  // Add new files (preview only, upload on save)
+  const handleNewImages = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    const remaining = 5 - images.length - newFiles.length
+    const accepted  = files.slice(0, remaining)
+    setNewFiles(prev => [...prev, ...accepted])
+    accepted.forEach(f => {
+      const reader = new FileReader()
+      reader.onloadend = () => setNewPreviews(prev => [...prev, reader.result])
+      reader.readAsDataURL(f)
+    })
+    e.target.value = ''
+  }
+
+  // Remove a pending-upload file
+  const removeNew = (idx) => {
+    setNewFiles(prev    => prev.filter((_, i) => i !== idx))
+    setNewPreviews(prev => prev.filter((_, i) => i !== idx))
+  }
 
   const handleSave = async () => {
     setError('')
@@ -443,6 +475,24 @@ function EditPanel({ listing, onClose, onSaved }) {
 
     setSaving(true)
     try {
+      // 1. Upload new images one by one
+      const uploadedIds = []
+      for (let i = 0; i < newFiles.length; i++) {
+        setUploadingIdx(i)
+        const formData = new FormData()
+        formData.append('file', newFiles[i])
+        const res = await fetch(`${API_URL}/images/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: formData,
+        })
+        if (!res.ok) throw new Error(`Upload ảnh ${i + 1} thất bại`)
+        const data = await res.json()
+        uploadedIds.push(data.image_id ?? data.id ?? data.filename)
+      }
+      setUploadingIdx(null)
+
+      // 2. Save listing with merged image list
       await updateListing(listing.id, {
         item_name:        form.item_name.trim(),
         item_price:       price,
@@ -452,11 +502,13 @@ function EditPanel({ listing, onClose, onSaved }) {
         subject:          form.subject,
         university:       form.university,
         keywords:         form.keywords.trim(),
+        images:           [...images, ...uploadedIds],
         ...(isResubmit && { status: 'pending' }),
       })
       setSaved(true)
       setTimeout(() => { onSaved(); onClose() }, 900)
     } catch (err) {
+      setUploadingIdx(null)
       setError(err.message || 'Lỗi khi lưu')
     } finally {
       setSaving(false)
@@ -466,6 +518,8 @@ function EditPanel({ listing, onClose, onSaved }) {
   const inputCls  = 'h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm'
   const selectCls = 'w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30'
   const labelCls  = 'font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground'
+
+  const totalImages = images.length + newFiles.length
 
   return (
     <>
@@ -477,6 +531,7 @@ function EditPanel({ listing, onClose, onSaved }) {
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-white shadow-2xl flex flex-col rounded-l-3xl overflow-hidden border-l border-teal-100"
       >
+        {/* Header */}
         <div className={`px-6 py-5 flex items-center justify-between flex-shrink-0 ${isResubmit ? 'bg-gradient-to-r from-red-500 to-rose-500' : 'bg-teal-gradient'}`}>
           <div>
             <p className="font-heading text-white/70 text-xs uppercase tracking-widest mb-0.5">
@@ -489,6 +544,7 @@ function EditPanel({ listing, onClose, onSaved }) {
           </button>
         </div>
 
+        {/* Reject reason banner */}
         {isResubmit && listing.reject_reason && (
           <div className="flex items-start gap-3 px-6 py-4 bg-red-50 border-b border-red-200 flex-shrink-0">
             <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -513,7 +569,89 @@ function EditPanel({ listing, onClose, onSaved }) {
           </div>
         )}
 
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-background">
+
+          {/* ── Image manager ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className={labelCls}>Ảnh bài đăng</label>
+              <span className="font-paragraph text-xs text-muted-foreground">{totalImages}/5 ảnh</span>
+            </div>
+
+            {totalImages === 0 ? (
+              <div className="rounded-xl border-2 border-dashed border-teal-100 bg-teal-50/40 py-8 flex flex-col items-center gap-2 text-muted-foreground">
+                <Upload className="h-7 w-7 text-teal-300" />
+                <p className="font-paragraph text-sm">Chưa có ảnh nào</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {/* Existing images */}
+                {images.map((imgId, idx) => (
+                  <div key={imgId} className="relative group aspect-square rounded-xl overflow-hidden border border-teal-100 bg-surface">
+                    <img
+                      src={getImageUrl(imgId)}
+                      alt={`ảnh ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeExisting(idx)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <XIcon className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* New images (pending upload) */}
+                {newPreviews.map((src, idx) => (
+                  <div key={`new-${idx}`} className="relative group aspect-square rounded-xl overflow-hidden border-2 border-dashed border-primary/40 bg-teal-50">
+                    <img src={src} alt={`mới ${idx + 1}`} className="w-full h-full object-cover opacity-80" />
+                    {/* uploading overlay */}
+                    {saving && uploadingIdx === idx && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      </div>
+                    )}
+                    {/* "Chưa lưu" badge */}
+                    {!saving && (
+                      <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-primary/80 text-white font-heading text-[9px] uppercase tracking-wide">
+                        Mới
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeNew(idx)}
+                      disabled={saving}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all disabled:opacity-40"
+                    >
+                      <XIcon className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload button — only show if < 5 total */}
+            {totalImages < 5 && (
+              <label className="flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-teal-200 bg-teal-50/60 hover:bg-teal-50 hover:border-primary cursor-pointer transition-colors">
+                <Upload className="h-4 w-4 text-primary" />
+                <span className="font-heading text-xs font-semibold text-primary uppercase tracking-wide">
+                  Thêm ảnh ({5 - totalImages} còn lại)
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleNewImages}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          {/* ── Text fields (giữ nguyên) ── */}
           <div className="space-y-1.5">
             <label className={labelCls}>Tên tài liệu *</label>
             <Input value={form.item_name} onChange={set('item_name')} placeholder="VD: Giáo trình Giải tích 1" className={inputCls} />
@@ -534,35 +672,20 @@ function EditPanel({ listing, onClose, onSaved }) {
               </select>
             </div>
           </div>
-          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className={labelCls}>Môn học</label>
-              <SelectWithCustom 
-                value={form.subject} 
-                onChange={set('subject')} 
-                options={SUBJECTS} 
-                placeholder="-- Chọn tên môn học --" 
-                className={selectCls} 
-              />
+              <SelectWithCustom value={form.subject} onChange={set('subject')} options={SUBJECTS} placeholder="-- Chọn tên môn học --" className={selectCls} />
             </div>
             <div className="space-y-1.5">
               <label className={labelCls}>Giá (VNĐ)</label>
               <Input type="number" min="0" value={form.item_price} onChange={set('item_price')} placeholder="0 = Miễn phí" className={inputCls} />
             </div>
           </div>
-          
           <div className="space-y-1.5">
             <label className={labelCls}>Trường đại học</label>
-            <SelectWithCustom 
-              value={form.university} 
-              onChange={set('university')} 
-              options={UNIVERSITIES} 
-              placeholder="-- Chọn trường --" 
-              className={selectCls} 
-            />
+            <SelectWithCustom value={form.university} onChange={set('university')} options={UNIVERSITIES} placeholder="-- Chọn trường --" className={selectCls} />
           </div>
-          
           <div className="space-y-1.5">
             <label className={labelCls}>Mô tả chi tiết</label>
             <textarea value={form.item_description} onChange={set('item_description')} rows={4}
@@ -575,6 +698,7 @@ function EditPanel({ listing, onClose, onSaved }) {
           </div>
         </div>
 
+        {/* Footer */}
         <div className="px-6 py-4 border-t border-teal-100 flex-shrink-0 space-y-3 bg-white">
           {isResubmit && !error && !saved && (
             <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
@@ -590,6 +714,15 @@ function EditPanel({ listing, onClose, onSaved }) {
               <p className="font-paragraph text-sm text-red-500">{error}</p>
             </div>
           )}
+          {/* Upload progress indicator */}
+          {saving && uploadingIdx !== null && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 border border-teal-200 rounded-xl">
+              <div className="w-4 h-4 rounded-full border-2 border-teal-200 border-t-primary animate-spin flex-shrink-0" />
+              <p className="font-paragraph text-xs text-teal-700">
+                Đang tải ảnh {uploadingIdx + 1}/{newFiles.length}...
+              </p>
+            </div>
+          )}
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving || saved}
               className={`flex-1 h-12 rounded-xl text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:translate-y-0 ${
@@ -600,7 +733,7 @@ function EditPanel({ listing, onClose, onSaved }) {
               {saved ? (
                 <><CheckCircle className="h-4 w-4" />{isResubmit ? 'Đã gửi lại!' : 'Đã lưu!'}</>
               ) : saving ? (
-                isResubmit ? 'Đang gửi...' : 'Đang lưu...'
+                uploadingIdx !== null ? `Tải ảnh ${uploadingIdx + 1}/${newFiles.length}...` : (isResubmit ? 'Đang gửi...' : 'Đang lưu...')
               ) : isResubmit ? (
                 <><RotateCcw className="h-4 w-4" />Gửi lại để duyệt</>
               ) : (
@@ -1161,7 +1294,7 @@ export default function AccountPage() {
                 {(deleteModal.type === 'listing' || isNegotiating) && deleteModal.listing && (
                   <div className={`mt-4 rounded-2xl border p-4 ${isNegotiating ? 'border-amber-200 bg-amber-50/50' : 'border-red-100 bg-red-50/50'}`}>
                     <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isNegotiating ? 'text-amber-600' : 'text-red-500'}`}>
-                      {isNegotiating ? 'Bài đăng bị chặn xóa' : 'Bài đăng sẽ bị xóa'}
+                      {isNegotiating ? 'Bài đăng không thể xóa' : 'Bài đăng sẽ bị xóa'}
                     </p>
                     <p className="font-heading text-sm text-gray-900">{deleteModal.listing.item_name}</p>
                   </div>
