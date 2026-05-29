@@ -452,10 +452,14 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
                       type="text"
                       placeholder="Nguyễn Văn A"
                       value={regName}
-                      onChange={e => setRegName(e.target.value)}
+                      onChange={e => setRegName(e.target.value.slice(0, 24))}
                       required
+                      maxLength={24}
                       className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
                     />
+                    <p className={`text-xs text-right ${regName.length >= 24 ? 'text-red-400' : 'text-muted-foreground'}`}>
+                      {regName.length}/24
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">

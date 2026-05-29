@@ -385,7 +385,7 @@ export default function ListingDetailPage() {
             {listing.item_description && (
               <div className="bg-white rounded-2xl border border-teal-100 shadow-soft p-5">
                 <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">Mô tả</p>
-                <p className="font-paragraph text-sm leading-relaxed text-foreground">{listing.item_description}</p>
+                <p className="font-paragraph text-sm leading-relaxed text-foreground whitespace-pre-wrap">{listing.item_description}</p>
               </div>
             )}
 
@@ -430,7 +430,7 @@ export default function ListingDetailPage() {
                     <span className="text-3xl">✅</span>
                   </div>
                   <p className="font-heading text-base font-bold text-emerald-600 mb-2">Đã ghi nhận báo cáo</p>
-                  <p className="font-paragraph text-sm text-muted-foreground mb-6">Cảm ơn bạn đã giúp cộng đồng.</p>
+                  <p className="font-paragraph text-sm text-muted-foreground mb-6">Cảm ơn bạn đã giúp cộng đồng an toàn hơn. Admin sẽ xem xét sớm nhất có thể.</p>
                   <button onClick={() => setShowReport(false)} className="px-6 py-2.5 rounded-xl bg-teal-gradient text-white font-heading font-semibold text-sm shadow-btn">Đóng</button>
                 </div>
               ) : (
