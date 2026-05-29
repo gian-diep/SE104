@@ -433,6 +433,8 @@ export default function HomePage() {
 
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [userUniversityFilter, setUserUniversityFilter] = useState('all')
+  const [userSearchResults, setUserSearchResults] = useState(null)
+  const [userSearchLoading, setUserSearchLoading] = useState(false)
   const knownUniversities = UNIVERSITIES.filter(u => u !== 'Khác')
   const knownSubjects = SUBJECTS.filter(s => s !== 'Khác')
 
@@ -453,8 +455,6 @@ export default function HomePage() {
   const searchSectionRef = useRef(null)
   const [searchResults, setSearchResults] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
-  const [userSearchResults, setUserSearchResults] = useState(null)
-  const [userSearchLoading, setUserSearchLoading] = useState(false)
 
   useEffect(() => {
     async function loadData() {
