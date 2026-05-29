@@ -191,7 +191,7 @@ def admin_delete_listing(listing_id: int, db: Session = Depends(get_db)):
         sys_msg = Message(
             session_id=session.id,
             sender_id=None,
-            text="Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.",
+            text="🚫 Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.",
             type="system",
         )
         db.add(sys_msg)
