@@ -13,7 +13,7 @@ import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertCircle,
   Pencil, X as XIcon, Upload, Save, Info, BookOpen, ClipboardList,
   Tag, Banknote, Star, User, RefreshCw, MessageCircle, PlusCircle,
-  Send, RotateCcw, Ban,
+  Send, RotateCcw, Ban, ShieldAlert,
 } from 'lucide-react'
 
 const CATEGORIES  = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
@@ -655,7 +655,7 @@ export default function AccountPage() {
   const [editingListing,  setEditingListing]  = useState(null)
   const [deleteModal, setDeleteModal] = useState({
     open: false,
-    type: null,
+    type: null,   // 'account' | 'listing' | 'negotiating'
     listing: null,
   })
 
@@ -728,7 +728,7 @@ export default function AccountPage() {
 
   const handleDeleteListing = (listing) => {
     if (listing.transaction_status === 'negotiating') {
-      alert('Không thể xóa bài đăng đang trong tình trạng thương lượng.')
+      setDeleteModal({ open: true, type: 'negotiating', listing })
       return
     }
     setDeleteModal({ open: true, type: 'listing', listing })
@@ -764,6 +764,8 @@ export default function AccountPage() {
   }
   const visibleListings = listingFilter === 'all' ? myListings : myListings.filter(l => l.status === listingFilter)
   const avatarSrc = avatarPreview || getAvatarUrl(currentUser?.avatar_url)
+
+  const isNegotiating = deleteModal.type === 'negotiating'
 
   if (isLoading) {
     return (
@@ -874,7 +876,6 @@ export default function AccountPage() {
                   />
                 </div>
 
-                {/* ── Đổi mật khẩu: current trước, new sau ── */}
                 <div className="space-y-1.5">
                   <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại</label>
                   <Input
@@ -1122,57 +1123,77 @@ export default function AccountPage() {
             transition={{ type: 'spring', damping: 24, stiffness: 260 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           >
-            <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
-              <div className="h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
+            <div className={`w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] border ${isNegotiating ? 'border-amber-100' : 'border-red-100'}`}>
+              {/* top bar */}
+              <div className={`h-1 bg-gradient-to-r ${isNegotiating ? 'from-amber-300 via-orange-400 to-amber-400' : 'from-red-400 via-rose-500 to-red-500'}`} />
 
-              <div className="border-b border-red-100 bg-gradient-to-b from-red-50/70 to-white px-7 py-6">
+              {/* header */}
+              <div className={`border-b px-7 py-6 bg-gradient-to-b to-white ${isNegotiating ? 'border-amber-100 from-amber-50/70' : 'border-red-100 from-red-50/70'}`}>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-100">
-                    <Trash2 className="h-7 w-7 text-red-500" />
+                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${isNegotiating ? 'bg-amber-100' : 'bg-red-100'}`}>
+                    {isNegotiating
+                      ? <ShieldAlert className="h-7 w-7 text-amber-500" />
+                      : <Trash2 className="h-7 w-7 text-red-500" />
+                    }
                   </div>
                   <div>
                     <p className="font-heading text-lg font-bold uppercase text-gray-900">
-                      {deleteModal.type === 'account' ? 'Xóa tài khoản' : 'Xóa bài đăng'}
+                      {deleteModal.type === 'account' ? 'Xóa tài khoản' : isNegotiating ? 'Không thể xóa' : 'Xóa bài đăng'}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">Hành động này không thể hoàn tác.</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {isNegotiating ? 'Bài đăng đang trong quá trình thương lượng.' : 'Hành động này không thể hoàn tác.'}
+                    </p>
                   </div>
                 </div>
               </div>
 
+              {/* body */}
               <div className="px-7 py-6">
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {deleteModal.type === 'account'
                     ? 'Bạn có chắc chắn muốn xóa tài khoản của mình không?'
+                    : isNegotiating
+                    ? 'Bạn không thể xóa bài đăng này vì đang có người thương lượng. Hãy hoàn tất hoặc hủy giao dịch trước khi xóa.'
                     : 'Bạn có chắc chắn muốn xóa bài đăng này không?'}
                 </p>
 
-                {deleteModal.type === 'listing' && deleteModal.listing && (
-                  <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-red-500 mb-1">Bài đăng sẽ bị xóa</p>
-                    <p className="font-heading text-sm uppercase text-gray-900">{deleteModal.listing.item_name}</p>
+                {/* tên bài đăng */}
+                {(deleteModal.type === 'listing' || isNegotiating) && deleteModal.listing && (
+                  <div className={`mt-4 rounded-2xl border p-4 ${isNegotiating ? 'border-amber-200 bg-amber-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isNegotiating ? 'text-amber-600' : 'text-red-500'}`}>
+                      {isNegotiating ? 'Bài đăng bị chặn xóa' : 'Bài đăng sẽ bị xóa'}
+                    </p>
+                    <p className="font-heading text-sm text-gray-900">{deleteModal.listing.item_name}</p>
                   </div>
                 )}
 
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-xs leading-relaxed text-amber-800">
-                    ⚠️ Dữ liệu sẽ bị xóa khỏi hệ thống và không thể khôi phục.
-                  </p>
-                </div>
+                {/* cảnh báo — chỉ hiện khi không phải negotiating */}
+                {!isNegotiating && (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs leading-relaxed text-amber-800">
+                      Dữ liệu sẽ bị xóa khỏi hệ thống và không thể khôi phục.
+                    </p>
+                  </div>
+                )}
               </div>
 
+              {/* footer buttons */}
               <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
                 <button
                   onClick={() => setDeleteModal({ open: false, type: null, listing: null })}
                   className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
                 >
-                  Hủy
+                  {isNegotiating ? 'Đã hiểu' : 'Hủy'}
                 </button>
-                <button
-                  onClick={confirmDelete}
-                  className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600"
-                >
-                  {deleteModal.type === 'account' ? 'Xóa tài khoản' : 'Xóa bài đăng'}
-                </button>
+                {!isNegotiating && (
+                  <button
+                    onClick={confirmDelete}
+                    className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600"
+                  >
+                    {deleteModal.type === 'account' ? 'Xóa tài khoản' : 'Xóa bài đăng'}
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
