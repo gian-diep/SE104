@@ -438,6 +438,8 @@ export default function HomePage() {
   const knownUniversities = UNIVERSITIES.filter(u => u !== 'Khác')
   const knownSubjects = SUBJECTS.filter(s => s !== 'Khác')
 
+  // Dùng kết quả API khi có search, còn lại lấy toàn bộ users
+  // Filter university vẫn client-side
   const filteredUsers = useMemo(() => {
     const base = userSearchResults !== null ? userSearchResults : users
     return base.filter(u => {
@@ -499,7 +501,7 @@ export default function HomePage() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Debounce search user — 250ms
+  // Debounce search user — 250ms, dùng ilike của backend (hỗ trợ unaccent)
   useEffect(() => {
     if (!userSearchQuery.trim()) {
       setUserSearchResults(null)
@@ -519,6 +521,8 @@ export default function HomePage() {
     }, 250)
     return () => clearTimeout(timer)
   }, [userSearchQuery])
+
+
 
   const usersMap = useMemo(() => {
     const m = {}
