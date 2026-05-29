@@ -1,8 +1,9 @@
 # backend/app/routes/user_route.py
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from typing import Optional
 
 from app.database.database import get_db
 from app.database.models import User, Rating
@@ -14,8 +15,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @router.get("")
-def get_users(db: Session = Depends(get_db)):
-    users = db.query(User).all()
+def get_users(
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    q = db.query(User)
+    if search:
+        term = f"%{search}%"
+        q = q.filter(
+            User.username.ilike(term) |
+            User.university.ilike(term)
+        )
+    users = q.all()
 
     return [
         {
