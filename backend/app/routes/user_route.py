@@ -71,7 +71,7 @@ def update_user(
         user.avatar_url = data.avatar_url
 
     if data.password is not None:
-        user.password_hash = pwd_context.hash(data.password)
+        user.password = pwd_context.hash(data.password)
 
     db.commit()
     db.refresh(user)
