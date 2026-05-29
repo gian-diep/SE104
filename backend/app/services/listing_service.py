@@ -85,8 +85,7 @@ def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing
         if field == "images":
             listing.images = value
         elif field == "status":
-            # ✅ Chỉ cho phép reset về pending nếu bài đang bị rejected
-            if value == "pending" and listing.status == "rejected":
+            if value == "pending" and listing.status in ("rejected", "approved"):  # ← SỬA ĐÂY
                 listing.status = "pending"
         else:
             setattr(listing, field, value)
