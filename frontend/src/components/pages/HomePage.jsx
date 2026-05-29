@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import {
   Search, SlidersHorizontal, PlusCircle, Star, BookOpen,
   Sparkles, GraduationCap, TrendingUp, Zap, Clock, Gift,
-  ChevronRight, Layers, Ban, X,
+  ChevronRight, Layers, Ban, X as XIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
@@ -832,7 +832,7 @@ export default function HomePage() {
                         <span className="font-paragraph text-xs text-emerald-700 font-semibold flex-1">
                           {PRICE_OPTIONS.find(o => o.value === priceFilter)?.label}
                         </span>
-                        <button onClick={() => setPriceFilter('all')} className="text-emerald-400 hover:text-emerald-700 transition-colors"><X className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setPriceFilter('all')} className="text-emerald-400 hover:text-emerald-700 transition-colors"><XIcon className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
                   </div>
