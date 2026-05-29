@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
-import { API_URL, apiFetch } from '@/lib/Api.js'
+import { API_URL } from '@/lib/Api.js'
 import {
   adminGetListings, adminApproveListing, adminRejectListing, adminDeleteListing,
   adminGetUsers, adminBanUser, adminUnbanUser, adminDeleteUser, adminGetReports
@@ -911,18 +911,11 @@ function UsersTab() {
     return !q || u.username?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.university?.toLowerCase().includes(q)
   })
 
-  const openBanModal = (user) => {
-    setBanModal({ open: true, userId: user.id, userName: user.username, action: 'ban_permanent', note: '' })
-  }
-
-  const confirmBan = async () => {
-    const { userId, action } = banModal
+  const ban = async (userId) => {
+    if (!confirm('Ban user này?')) return
     setBusy(p => ({ ...p, [userId]: true }))
-    try {
-      await apiFetch(`/admin/users/${userId}/status?action=${action}`, { method: 'PUT' })
-      await load()
-      setBanModal({ open: false, userId: null, userName: '', action: '', note: '' })
-    } catch (e) { alert('Lỗi: ' + e.message) }
+    try { await adminBanUser(userId); await load() }
+    catch (e) { alert('Lỗi: ' + e.message) }
     finally { setBusy(p => ({ ...p, [userId]: false })) }
   }
 
@@ -1034,7 +1027,7 @@ function UsersTab() {
                     <CheckCircle className="h-4 w-4" />
                   </button>
                 ) : (
-                  <button onClick={() => openBanModal(user)} disabled={busy[user.id]}
+                  <button onClick={() => ban(user.id)} disabled={busy[user.id]}
                     title="Ban" className="p-2 text-muted-foreground hover:text-orange-500 transition-colors disabled:opacity-50">
                     <Ban className="h-4 w-4" />
                   </button>
@@ -1059,74 +1052,6 @@ function UsersTab() {
         )}
       </div>
       <p className="font-paragraph text-xs text-muted-foreground mt-3 text-right">{filtered.length} người dùng</p>
-
-      {/* Ban Modal */}
-      {banModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-2xl">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 via-red-500 to-orange-500" />
-
-            <div className="px-7 pt-7 pb-5 border-b border-orange-100">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100">
-                  <Ban className="h-6 w-6 text-orange-500" />
-                </div>
-                <div>
-                  <h3 className="font-heading text-lg uppercase tracking-wide text-gray-900">Hạn chế tài khoản</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Tài khoản: <span className="font-medium text-foreground">{banModal.userName}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-7 py-6 space-y-4">
-              <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-3">Chọn hình thức xử phạt</p>
-              <div className="space-y-2">
-                {[
-                  { value: 'warn',          label: 'Cảnh cáo',       desc: 'Ghi nhận vi phạm, không khóa tài khoản',   icon: AlertTriangle, iconCls: 'text-yellow-500' },
-                  { value: 'ban_7days',     label: 'Ban 7 ngày',     desc: 'Tài khoản bị hạn chế trong 7 ngày',        icon: ShieldAlert,   iconCls: 'text-orange-500' },
-                  { value: 'ban_permanent', label: 'Ban vĩnh viễn',  desc: 'Tài khoản bị khóa không thời hạn',         icon: ShieldX,       iconCls: 'text-red-500'    },
-                ].map(opt => {
-                  const Icon = opt.icon
-                  return (
-                    <label key={opt.value}
-                      className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${
-                        banModal.action === opt.value ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-orange-200 hover:bg-orange-50/50'
-                      }`}>
-                      <input type="radio" name="banAction" value={opt.value}
-                        checked={banModal.action === opt.value}
-                        onChange={() => setBanModal(m => ({ ...m, action: opt.value }))}
-                        className="mt-1" />
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0">
-                          <Icon className={`w-4 h-4 ${opt.iconCls}`} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-heading uppercase tracking-wide text-gray-900">{opt.label}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
-                        </div>
-                      </div>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
-              <button onClick={() => setBanModal({ open: false, userId: null, userName: '', action: '', note: '' })}
-                className="flex-1 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 hover:bg-gray-50">
-                Hủy
-              </button>
-              <button onClick={confirmBan} disabled={!banModal.action || busy[banModal.userId]}
-                className="flex-1 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed">
-                {busy[banModal.userId] ? 'Đang xử lý...' : 'Xác nhận'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {deleteModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] animate-in zoom-in-95 duration-200">
