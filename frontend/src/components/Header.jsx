@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { LogOut, User, PlusCircle, MessageCircle, BookOpen, ChevronDown, Search, Bell, X, CheckCheck, ShieldCheck, ShieldAlert, AlertTriangle, Ban, Clock } from 'lucide-react'
+import { LogOut, User, PlusCircle, MessageCircle, BookOpen, ChevronDown, Search, Bell, X as XIcon, CheckCheck, ShieldCheck, ShieldAlert, AlertTriangle, Ban, Clock } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/modals/AuthModal'

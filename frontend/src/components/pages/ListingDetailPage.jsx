@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Tag, BookOpen, FileText,
-  MessageSquarePlus, School, Lock, Flag, X, ChevronDown, Star, User,
+  MessageSquarePlus, School, Lock, Flag, X as XIcon, ChevronDown, Star, User,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -420,7 +420,7 @@ export default function ListingDetailPage() {
             <div className="bg-red-500 px-6 py-5 flex items-center justify-between">
               <h3 className="font-heading text-white font-bold text-base">Báo cáo bài đăng</h3>
               <button onClick={() => setShowReport(false)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <X className="h-4 w-4 text-white" />
+                <XIcon className="h-4 w-4 text-white" />
               </button>
             </div>
             <div className="p-6">

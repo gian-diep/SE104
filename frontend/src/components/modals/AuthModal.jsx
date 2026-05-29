@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Eye, EyeOff, BookOpen, Sparkles, AlertTriangle, Send, CheckCircle, Clock } from 'lucide-react'
+import { X as XIcon, Eye, EyeOff, BookOpen, Sparkles, AlertTriangle, Send, CheckCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
@@ -354,7 +354,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
                 onClick={handle_close}
                 className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
               >
-                <X className="h-4 w-4 text-white" />
+                <XIcon className="h-4 w-4 text-white" />
               </button>
             </div>
 

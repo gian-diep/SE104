@@ -7,7 +7,7 @@ import {
   Ban, Trash2, Star, RefreshCw, Search,
   BookOpen, ClipboardList, Banknote, User, Flag, ExternalLink,
   UserCircle, UserX, MessageSquareWarning, ThumbsUp, ThumbsDown,
-  ShieldX, ShieldAlert, X
+  ShieldX, ShieldAlert, X as XIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1162,7 +1162,7 @@ function UsersTab() {
                   onClick={() => setSelectedUser(null)}
                   className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                 >
-                  <X className="h-4 w-4 text-white" />
+                  <XIcon className="h-4 w-4 text-white" />
                 </button>
               </div>
 

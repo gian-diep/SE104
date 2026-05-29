@@ -11,7 +11,7 @@ import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, 
 import { API_URL } from '@/lib/Api.js'
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertCircle,
-  Pencil, X, Upload, Save, Info, BookOpen, ClipboardList,
+  Pencil, X as XIcon, Upload, Save, Info, BookOpen, ClipboardList,
   Tag, Banknote, Star, User, RefreshCw, MessageCircle, PlusCircle,
   Send, RotateCcw, Ban,
 } from 'lucide-react'
@@ -307,7 +307,7 @@ function RatingsModal({ userId, onClose }) {
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
           >
-            <X className="h-4 w-4 text-white" />
+            <XIcon className="h-4 w-4 text-white" />
           </button>
         </div>
 
@@ -485,7 +485,7 @@ function EditPanel({ listing, onClose, onSaved }) {
             <h2 className="font-heading text-white font-bold text-base leading-tight line-clamp-1">{listing.item_name}</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-            <X className="h-4 w-4 text-white" />
+            <XIcon className="h-4 w-4 text-white" />
           </button>
         </div>
 
