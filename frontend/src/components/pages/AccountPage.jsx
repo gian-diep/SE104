@@ -848,8 +848,12 @@ export default function AccountPage() {
 
                 <div className="space-y-1.5">
                   <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tên người dùng</label>
-                  <Input value={username} onChange={e => setUsername(e.target.value)}
+                  <Input value={username} onChange={e => setUsername(e.target.value.slice(0, 24))}
+                    maxLength={24}
                     className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
+                  <p className={`text-xs text-right ${username.length >= 24 ? 'text-red-400' : 'text-muted-foreground'}`}>
+                    {username.length}/24
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
