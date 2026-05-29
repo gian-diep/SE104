@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from passlib.context import CryptContext
 from typing import Optional
 
@@ -23,8 +24,8 @@ def get_users(
     if search:
         term = f"%{search}%"
         q = q.filter(
-            User.username.ilike(term) |
-            User.university.ilike(term)
+            func.unaccent(User.username).ilike(func.unaccent(term)) |
+            func.unaccent(User.university).ilike(func.unaccent(term))
         )
     users = q.all()
 
@@ -150,7 +151,6 @@ def get_user_ratings(user_id: int, db: Session = Depends(get_db)):
             "rater_name": rater.username if rater else "Ẩn danh",
             "rater_avatar": rater.avatar_url if rater else None,
 
-            # 👇 thêm info bài đăng
             "listing_id": listing.id if listing else None,
             "listing_name": listing.item_name if listing else None,
             "listing_image":
