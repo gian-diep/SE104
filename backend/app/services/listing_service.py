@@ -1,14 +1,14 @@
-# ============================================================
-# FILE: backend/app/services/listing_service.py
-# THAY THẾ TOÀN BỘ FILE NÀY
-# ============================================================
+"""
+backend/app/services/listing_service.py
+
+Thay đổi: images là list[str] (image_id), không phải binary.
+"""
 
 from sqlalchemy.orm import Session
 from app.database.models import Listing
 from app.schemas.listing_schema import ListingCreate, ListingUpdate
+from sqlalchemy import or_
 from app.database.models import User
-from sqlalchemy import or_, func
-
 
 def create_listing(db: Session, seller_id: int, data: ListingCreate) -> Listing:
     seller = db.query(User).filter(User.id == seller_id).first()
@@ -26,7 +26,9 @@ def create_listing(db: Session, seller_id: int, data: ListingCreate) -> Listing:
         status="pending",
         transaction_status="available",
     )
-    listing.images = data.images
+    # Dùng property setter — tự động serialize thành JSON
+    listing.images = data.images   # ← list of image_id strings
+
     db.add(listing)
     db.commit()
     db.refresh(listing)
@@ -41,32 +43,29 @@ def get_listings(
     skip: int = 0,
     limit: int = 20,
 ):
-    # [THAY ĐỔI 2] Lọc bỏ bài đã soft-delete
-    q = db.query(Listing).filter(
-        Listing.status == "approved"
-    )
+    q = db.query(Listing).filter(Listing.status == "approved")
 
+    # FILTER
     if category:
         q = q.filter(Listing.category == category)
+
     if university:
         q = q.filter(Listing.university == university)
 
+    # SEARCH
     if keyword:
-        unaccent = func.unaccent
         q = q.filter(
             or_(
-                func.similarity(unaccent(Listing.item_name), unaccent(keyword)) > 0.3,
-                func.similarity(unaccent(Listing.subject), unaccent(keyword)) > 0.3,
-                func.similarity(unaccent(Listing.keywords), unaccent(keyword)) > 0.3,
-                unaccent(Listing.item_name).ilike(f"%{keyword}%"),
-                unaccent(Listing.item_description).ilike(f"%{keyword}%"),
-                unaccent(Listing.subject).ilike(f"%{keyword}%"),
-                unaccent(Listing.keywords).ilike(f"%{keyword}%"),
+                Listing.item_name.ilike(f"%{keyword}%"),
+                Listing.item_description.ilike(f"%{keyword}%"),
+                Listing.subject.ilike(f"%{keyword}%"),
+                Listing.keywords.ilike(f"%{keyword}%"),
             )
-        ).order_by(
-            func.similarity(unaccent(Listing.item_name), unaccent(keyword)).desc()
         )
+
+    # Mới nhất trước
     q = q.order_by(Listing.created_at.desc())
+
     return q.offset(skip).limit(limit).all()
 
 
@@ -75,12 +74,7 @@ def get_listing_by_id(db: Session, listing_id: int) -> Listing | None:
 
 
 def get_listings_by_seller(db: Session, seller_id: int):
-    # [THAY ĐỔI 2] Ẩn bài đã deleted với người dùng thường
-    return (
-        db.query(Listing)
-        .filter(Listing.seller_id == seller_id, Listing.status != "deleted")
-        .all()
-    )
+    return db.query(Listing).filter(Listing.seller_id == seller_id).all()
 
 
 def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing | None:
@@ -91,7 +85,8 @@ def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing
         if field == "images":
             listing.images = value
         elif field == "status":
-            if value == "pending" and listing.status in ("rejected", "approved"):  # ← SỬA ĐÂY
+            # ✅ Chỉ cho phép reset về pending nếu bài đang bị rejected
+            if value == "pending" and listing.status == "rejected":
                 listing.status = "pending"
         else:
             setattr(listing, field, value)
@@ -101,18 +96,16 @@ def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing
 
 
 def delete_listing(db: Session, listing_id: int) -> bool:
-    """
-    [THAY ĐỔI 2] Soft delete: đổi status → 'deleted' thay vì xóa hẳn
-    """
     listing = get_listing_by_id(db, listing_id)
     if not listing:
         return False
-    listing.status = "deleted"
+    db.delete(listing)
     db.commit()
     return True
 
 
 def update_transaction_status(db: Session, listing_id: int, transaction_status: str) -> Listing | None:
+    """Cập nhật trạng thái giao dịch: available | negotiating | sold"""
     listing = get_listing_by_id(db, listing_id)
     if not listing:
         return None
@@ -131,13 +124,12 @@ def approve_listing(db: Session, listing_id: int) -> Listing | None:
     db.refresh(listing)
     return listing
 
-
 def reject_listing(db: Session, listing_id: int, reason: str) -> Listing | None:
     listing = get_listing_by_id(db, listing_id)
     if not listing:
         return None
     listing.status = "rejected"
-    listing.reject_reason = reason
+    listing.reject_reason = reason  # ← THÊM DÒNG NÀY
     db.commit()
     db.refresh(listing)
     return listing
