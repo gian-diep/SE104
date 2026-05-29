@@ -7,6 +7,7 @@ import Footer from '@/components/Footer'
 import { useAuth } from '@/context/AuthContext'
 import { createListing } from '@/lib/Listingapi.js'
 import { uploadImage, buildImageUrl } from '@/lib/Imageapi.js'
+import { checkContent } from '@/lib/contentFilter.js'
 
 const CATEGORIES = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
 const CONDITIONS = ['Mới', 'Như mới', 'Tốt', 'Khá tốt', 'Trung bình']

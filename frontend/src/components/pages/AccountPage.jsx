@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
 import { uploadAvatar, getUserRatings } from '@/lib/Userapi.js'
+import { checkContent } from '@/lib/contentFilter.js'
 import { loginApi } from '@/lib/Authapi.js'
 import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi.js'
 import { API_URL } from '@/lib/Api.js'
@@ -497,6 +498,13 @@ function EditPanel({ listing, onClose, onSaved }) {
     if (!form.category)          { setError('Vui lòng chọn phân loại');    return }
     if (!form.condition)         { setError('Vui lòng chọn tình trạng');   return }
     const price = form.item_price === '' ? 0 : parseFloat(form.item_price)
+
+// trong handleSave, thêm sau setError(''):
+    const check = checkContent(form)
+    if (!check.ok) {
+      setError(`Nội dung chứa từ không được phép: "${check.violations[0]}"`)
+      return
+    }
     if (isNaN(price) || price < 0) { setError('Giá không hợp lệ'); return }
 
     setSaving(true)
