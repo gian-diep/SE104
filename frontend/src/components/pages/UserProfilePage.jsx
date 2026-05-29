@@ -10,7 +10,7 @@ import { getListingsBySeller } from '@/lib/Listingapi.js'
 import { createReport } from '@/lib/Reportapi.js'
 import {
   Star, User, GraduationCap, BookOpen, Package,
-  ArrowLeft, MessageCircle, CheckCircle, XCircle, X,
+  ArrowLeft, MessageCircle, CheckCircle, XCircle, X as XIcon,
   Flag, AlertTriangle, Send, ChevronDown, Ban,
 } from 'lucide-react'
 
@@ -170,7 +170,7 @@ function RatingsModal({ userId, onClose }) {
               </h2>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-              <X className="h-4 w-4 text-white" />
+              <XIcon className="h-4 w-4 text-white" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 bg-background">
@@ -291,7 +291,7 @@ function ReportUserModal({ profile, currentUser, onClose }) {
               <h3 className="font-heading text-white font-bold text-base">{profile.username}</h3>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-              <X className="h-4 w-4 text-white" />
+              <XIcon className="h-4 w-4 text-white" />
             </button>
           </div>
 
