@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Star, Send, BookOpen, CheckCircle } from 'lucide-react'
+import { X as XIcon, Star, Send, BookOpen, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
 import { rateSession } from '@/lib/Chatapi.js'
@@ -89,7 +89,7 @@ export default function RatingModal({ isOpen, onClose, session, onRated }) {
                 onClick={onClose}
                 className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/50 hover:bg-amber-50 border border-transparent hover:border-amber-100 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
               >
-                <X className="h-4 w-4" />
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
 
