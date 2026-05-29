@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Shield, CheckCircle, XCircle, Clock, Users, FileText,
   AlertTriangle, Eye, LogOut, BarChart3,
   Ban, Trash2, Star, RefreshCw, Search,
   BookOpen, ClipboardList, Banknote, User, Flag, ExternalLink,
   UserCircle, UserX, MessageSquareWarning, ThumbsUp, ThumbsDown,
-  ShieldX, ShieldAlert
+  ShieldX, ShieldAlert, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -338,7 +339,7 @@ function ModerationTab({ onStatsChange }) {
               <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm">
-                    📝
+                    <FileText className="h-5 w-5 text-red-400" />
                   </div>
 
                   <div className="min-w-0">
@@ -889,6 +890,7 @@ function UsersTab() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy]       = useState({})
   const [error, setError]     = useState('')
+  const [selectedUser, setSelectedUser] = useState(null)
   const [deleteModal, setDeleteModal] = useState({
     open: false,
     userId: null,
@@ -1012,14 +1014,13 @@ function UsersTab() {
                 <p className="font-paragraph text-xs text-muted-foreground">{user.listing_count ?? 0} bài</p>
               </div>
               <div className="col-span-12 md:col-span-2 flex items-center gap-1 justify-end">
-                <Link
-                  to={`/nguoi-dung/${user.id}`}
-                  target="_blank"
-                  title="Xem hồ sơ"
+                <button
+                  onClick={() => setSelectedUser(user)}
+                  title="Xem chi tiết"
                   className="p-2 text-muted-foreground hover:text-primary transition-colors"
                 >
                   <UserCircle className="h-4 w-4" />
-                </Link>
+                </button>
                 {user.role === 'banned' ? (
                   <button onClick={() => unban(user.id)} disabled={busy[user.id]}
                     title="Unban" className="p-2 text-muted-foreground hover:text-green-500 transition-colors disabled:opacity-50">
@@ -1080,8 +1081,8 @@ function UsersTab() {
               <div className="mt-5 rounded-[1.5rem] border border-red-100 bg-red-50/50 p-4 text-left">
                 <div className="flex items-center gap-3">
 
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm text-xl">
-                    👤
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                    <User className="h-6 w-6 text-red-400" />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -1098,9 +1099,12 @@ function UsersTab() {
 
               {/* Warning */}
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
-                <p className="text-xs leading-relaxed text-amber-800">
-                  ⚠️ Hành động này không thể hoàn tác và toàn bộ dữ liệu liên quan có thể bị mất.
-                </p>
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs leading-relaxed text-amber-800">
+                    Hành động này không thể hoàn tác và toàn bộ dữ liệu liên quan có thể bị mất.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1131,6 +1135,134 @@ function UsersTab() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Admin User Detail Modal ── */}
+      {selectedUser && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={() => setSelectedUser(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              className="pointer-events-auto w-[95vw] max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-teal-100"
+            >
+              {/* Header */}
+              <div className="px-6 py-5 flex items-center justify-between bg-teal-gradient">
+                <div>
+                  <p className="font-heading text-white/70 text-xs uppercase tracking-widest mb-0.5">Chi tiết tài khoản</p>
+                  <h2 className="font-heading text-white font-bold text-base">{selectedUser.username}</h2>
+                </div>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                >
+                  <X className="h-4 w-4 text-white" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-5 space-y-4">
+                {/* Avatar + basic info */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-lg font-black text-primary flex-shrink-0">
+                    {selectedUser.avatar_url ? (
+                      <img src={selectedUser.avatar_url.startsWith('http') ? selectedUser.avatar_url : `${API_URL}/avatars/${selectedUser.avatar_url}`} alt={selectedUser.username} className="w-full h-full object-cover" />
+                    ) : (
+                      selectedUser.username?.[0]?.toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-heading text-base font-bold text-foreground truncate">{selectedUser.username}</p>
+                    <p className="font-paragraph text-sm text-muted-foreground truncate">{selectedUser.email}</p>
+                    {selectedUser.university && (
+                      <p className="font-paragraph text-xs text-muted-foreground mt-0.5 truncate">{selectedUser.university}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-teal-50 rounded-xl p-3 text-center">
+                    <p className="font-heading text-lg font-black text-primary">{selectedUser.listing_count ?? 0}</p>
+                    <p className="font-paragraph text-xs text-muted-foreground">Bài đăng</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-xl p-3 text-center">
+                    <p className="font-heading text-lg font-black text-amber-600">{selectedUser.rating?.toFixed(1) ?? '0.0'}</p>
+                    <p className="font-paragraph text-xs text-muted-foreground">Đánh giá</p>
+                  </div>
+                  <div className="bg-surface rounded-xl p-3 text-center">
+                    <p className="font-heading text-lg font-black text-foreground">{selectedUser.rating_count ?? 0}</p>
+                    <p className="font-paragraph text-xs text-muted-foreground">Lượt đánh giá</p>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-teal-100 bg-surface">
+                  <span className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trạng thái</span>
+                  <Badge status={selectedUser.role === 'banned' ? 'banned' : 'user'} />
+                </div>
+
+                {/* Join date */}
+                {selectedUser.created_at && (
+                  <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-teal-100 bg-surface">
+                    <span className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Ngày tham gia</span>
+                    <span className="font-paragraph text-sm text-foreground">
+                      {new Date(selectedUser.created_at).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="px-6 pb-6 flex gap-3">
+                {selectedUser.role === 'banned' ? (
+                  <button
+                    onClick={async () => {
+                      await unban(selectedUser.id)
+                      setSelectedUser(prev => prev ? { ...prev, role: 'user' } : null)
+                    }}
+                    disabled={busy[selectedUser.id]}
+                    className="flex-1 h-11 rounded-xl bg-emerald-500 text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-60"
+                  >
+                    <CheckCircle className="h-4 w-4" />Gỡ cấm
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Ban user này?')) return
+                      await ban(selectedUser.id)
+                      setSelectedUser(prev => prev ? { ...prev, role: 'banned' } : null)
+                    }}
+                    disabled={busy[selectedUser.id]}
+                    className="flex-1 h-11 rounded-xl bg-orange-500 text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-60"
+                  >
+                    <Ban className="h-4 w-4" />Cấm tài khoản
+                  </button>
+                )}
+                <a
+                  href={`/nguoi-dung/${selectedUser.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-11 px-4 rounded-xl border border-teal-100 font-heading font-semibold text-sm text-foreground hover:border-primary hover:text-primary transition-colors flex items-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />Hồ sơ
+                </a>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="h-11 px-4 rounded-xl border border-teal-100 font-heading text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </>
       )}
     </div>
   )

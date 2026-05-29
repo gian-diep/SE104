@@ -870,7 +870,19 @@ export default function AccountPage() {
                   />
                 </div>
 
-                {/* ── Mật khẩu mới ── */}
+                {/* ── Đổi mật khẩu: current trước, new sau ── */}
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại</label>
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="Nhập nếu muốn đổi mật khẩu"
+                    autoComplete="current-password"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu mới</label>
                   <Input
@@ -881,24 +893,7 @@ export default function AccountPage() {
                     autoComplete="new-password"
                     className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
                   />
-                </div>
-
-                {/*
-                  FIX: luôn render trong DOM, chỉ ẩn bằng CSS khi không cần.
-                  Dùng conditional render ({password && ...}) khiến browser autofill
-                  không trigger onChange của React → state currentPassword luôn rỗng.
-                */}
-                <div className={`space-y-1.5 transition-all ${!password ? 'hidden' : ''}`}>
-                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại *</label>
-                  <Input
-                    type="password"
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu hiện tại để xác nhận"
-                    autoComplete="current-password"
-                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
-                  />
-                  <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc khi đổi mật khẩu mới</p>
+                  <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc nhập mật khẩu hiện tại khi đổi mật khẩu mới</p>
                 </div>
 
                 {message && (

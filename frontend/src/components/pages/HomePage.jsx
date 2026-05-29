@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import {
   Search, SlidersHorizontal, PlusCircle, Star, BookOpen,
   Sparkles, GraduationCap, TrendingUp, Zap, Clock, Gift,
-  ChevronRight, Layers, Ban,
+  ChevronRight, Layers, Ban, X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, useMemo} from 'react'
 import { Link } from 'react-router-dom'
@@ -461,6 +461,8 @@ export default function HomePage() {
   }, [users, userSearchQuery, userUniversityFilter])
 
   const searchSectionRef = useRef(null)
+  const [searchResults, setSearchResults] = useState(null) // null = chưa search, array = có kết quả từ backend
+  const [searchLoading, setSearchLoading] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -483,6 +485,27 @@ export default function HomePage() {
 
     loadData()
   }, [])
+
+  // Gọi backend search khi searchQuery thay đổi (debounce 400ms)
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const data = await getListings({ keyword: searchQuery.trim() })
+        setSearchResults(data)
+      } catch (err) {
+        console.error('Search failed:', err)
+        setSearchResults([])
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const usersMap = useMemo(() => {
     const m = {}
@@ -517,16 +540,7 @@ export default function HomePage() {
   // ── Filter logic — hỗ trợ option 'Khác' cho trường & môn ─────────────────
 
   const filteredListings = applyPriceFilter(
-    approvedListings.filter(item => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase()
-        if (
-          !item.item_name?.toLowerCase().includes(q) &&
-          !item.item_description?.toLowerCase().includes(q) &&
-          !item.keywords?.toLowerCase().includes(q) &&
-          !item.subject?.toLowerCase().includes(q)
-        ) return false
-      }
+    (searchResults !== null ? searchResults.filter(l => l.status === 'approved' && isSellerActive(l)) : approvedListings).filter(item => {
       if (categoryFilter !== 'all' && item.category !== categoryFilter) return false
       if (conditionFilter !== 'all' && item.condition !== conditionFilter) return false
 
@@ -564,6 +578,7 @@ export default function HomePage() {
 
   const resetFilters = () => {
     setSearchQuery(''); setCategoryFilter('all'); setSubjectFilter('all')
+    setSearchResults(null)
     setUniversityFilter('all'); setConditionFilter('all'); setPriceFilter('all')
   }
 
@@ -726,9 +741,13 @@ export default function HomePage() {
               </div>
               <div className="bg-white rounded-xl border border-teal-100 px-4 py-2 shadow-soft">
                 <p className="font-paragraph text-sm text-muted-foreground">
-                  <span className="font-bold text-primary">
-                    {searchMode === 'listing' ? filteredListings.length : filteredUsers.length}
-                  </span> kết quả
+                  {searchLoading ? (
+                    <span className="text-primary">Đang tìm...</span>
+                  ) : (
+                    <><span className="font-bold text-primary">
+                      {searchMode === 'listing' ? filteredListings.length : filteredUsers.length}
+                    </span> kết quả</>
+                  )}
                 </p>
               </div>
             </div>
@@ -800,7 +819,7 @@ export default function HomePage() {
                         <span className="font-paragraph text-xs text-emerald-700 font-semibold flex-1">
                           {PRICE_OPTIONS.find(o => o.value === priceFilter)?.label}
                         </span>
-                        <button onClick={() => setPriceFilter('all')} className="text-emerald-400 hover:text-emerald-700 transition-colors text-sm leading-none">✕</button>
+                        <button onClick={() => setPriceFilter('all')} className="text-emerald-400 hover:text-emerald-700 transition-colors"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
                   </div>
