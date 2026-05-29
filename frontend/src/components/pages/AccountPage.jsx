@@ -499,7 +499,6 @@ function EditPanel({ listing, onClose, onSaved }) {
     if (!form.condition)         { setError('Vui lòng chọn tình trạng');   return }
     const price = form.item_price === '' ? 0 : parseFloat(form.item_price)
 
-// trong handleSave, thêm sau setError(''):
     const check = checkContent(form)
     if (!check.ok) {
       setError(`Nội dung chứa từ không được phép: "${check.violations[0]}"`)
@@ -841,13 +840,14 @@ const handleDeleteListing = (listing) => {
     catch (err) { alert(err.message || 'Lỗi khi cập nhật trạng thái giao dịch') }
   }
 
+  const activeListings = myListings.filter(l => l.status !== 'deleted')
   const counts = {
-    all:      myListings.length,
-    pending:  myListings.filter(l => l.status === 'pending').length,
-    approved: myListings.filter(l => l.status === 'approved').length,
-    rejected: myListings.filter(l => l.status === 'rejected').length,
+    all:      activeListings.length,
+    pending:  activeListings.filter(l => l.status === 'pending').length,
+    approved: activeListings.filter(l => l.status === 'approved').length,
+    rejected: activeListings.filter(l => l.status === 'rejected').length,
   }
-  const visibleListings = listingFilter === 'all' ? myListings : myListings.filter(l => l.status === listingFilter)
+  const visibleListings = listingFilter === 'all' ? activeListings : activeListings.filter(l => l.status === listingFilter)
   const avatarSrc = avatarPreview || getAvatarUrl(currentUser?.avatar_url)
 
   if (isLoading) {
