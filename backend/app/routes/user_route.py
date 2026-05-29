@@ -88,7 +88,7 @@ def update_user(
     db.refresh(user)
 
     return {
-        "message": "Cập nhật thành công",
+        "message": "Cập nhật thành công!",
         "user": {
             "id": user.id,
             "username": user.username,
