@@ -1,22 +1,28 @@
-# ============================================================
-# FILE: backend/app/routes/admin_route.py
-# THAY THẾ TOÀN BỘ FILE NÀY
-# ============================================================
+"""
+backend/app/routes/admin_route.py
+
+Các endpoint dành riêng cho admin:
+- GET  /admin/listings          → lấy TẤT CẢ bài đăng (kể cả pending, rejected)
+- GET  /admin/users             → lấy danh sách user (trừ admin)
+- PUT  /admin/users/{id}/status → ban / unban user
+- DELETE /admin/users/{id}      → xóa user
+"""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime, timedelta
 
 from app.database.database import get_db
-from app.database.models import User, Listing
+from app.database.models import User, Listing, ChatSession, Message
+from datetime import datetime
 from app.schemas.listing_schema import ListingOut
 from app.services import listing_service
-
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+# ── Helper: chuyển Listing ORM → ListingOut ───────────────────────────────────
 def _to_out(listing) -> ListingOut:
+    """Chuyển ORM object → ListingOut, đọc images từ property."""
     return ListingOut(
         id=listing.id,
         seller_id=listing.seller_id,
@@ -31,7 +37,7 @@ def _to_out(listing) -> ListingOut:
         keywords=listing.keywords,
         status=listing.status,
         transaction_status=listing.transaction_status or "available",
-        images=listing.images,
+        images=listing.images,   # ← đọc qua property, trả list[str]
         seller_rating=listing.seller.rating if listing.seller else 0,
         seller_rating_count=listing.seller.rating_count if listing.seller else 0,
         reject_reason=listing.reject_reason,
@@ -44,12 +50,16 @@ def _to_out(listing) -> ListingOut:
 
 @router.get("/listings", response_model=list[ListingOut])
 def get_all_listings(
-    status:   Optional[str] = Query(None),
+    status:   Optional[str] = Query(None),   # pending | approved | rejected | None = tất cả
     keyword:  Optional[str] = Query(None),
     skip:     int = Query(0, ge=0),
     limit:    int = Query(50, le=200),
     db: Session = Depends(get_db),
 ):
+    """
+    Lấy tất cả bài đăng — dành cho admin kiểm duyệt.
+    Không filter status mặc định (khác GET /listings chỉ trả approved).
+    """
     q = db.query(Listing)
     if status:
         q = q.filter(Listing.status == status)
@@ -68,8 +78,11 @@ def get_all_users(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    # [THAY ĐỔI 2] Lọc bỏ user đã soft-delete (status = "deleted")
-    q = db.query(User).filter(User.role != "admin", User.status != "deleted")
+    """
+    Lấy danh sách tất cả user (trừ admin).
+    Trả thêm listing_count để hiển thị số bài đã đăng.
+    """
+    q = db.query(User).filter(User.role != "admin")
     if search:
         q = q.filter(
             User.username.contains(search) | User.email.contains(search)
@@ -89,8 +102,6 @@ def get_all_users(
             "rating_count":  u.rating_count,
             "created_at":    u.created_at,
             "listing_count": len(u.listings),
-            # [THAY ĐỔI 1] Trả thêm ban_until để frontend hiển thị loại ban
-            "ban_until":     u.ban_until,
         })
     return result
 
@@ -98,15 +109,13 @@ def get_all_users(
 @router.put("/users/{user_id}/status")
 def update_user_status(
     user_id: int,
-    action: str = Query(..., description="ban | unban | ban_7days | ban_permanent | warn"),
+    action: str = Query(..., description="ban | unban"),
     db: Session = Depends(get_db),
 ):
     """
-    [THAY ĐỔI 1] Mở rộng action:
-    - ban / ban_permanent → role = 'banned', ban_until = NULL (vĩnh viễn)
-    - ban_7days           → role = 'banned', ban_until = now + 7 ngày
-    - unban               → role = 'user',   ban_until = NULL
-    - warn                → không thay đổi role (chỉ dùng qua /reports/{id}/punish)
+    Ban hoặc unban một user.
+    - ban   → role = 'banned'
+    - unban → role = 'user'
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -114,44 +123,34 @@ def update_user_status(
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Không thể thay đổi trạng thái admin")
 
-    if action in ("ban", "ban_permanent"):
+    if action == "ban":
         user.role = "banned"
-        user.ban_until = None  # vĩnh viễn
-    elif action == "ban_7days":
-        user.role = "banned"
-        user.ban_until = datetime.utcnow() + timedelta(days=7)
     elif action == "unban":
         user.role = "user"
-        user.ban_until = None
     else:
-        raise HTTPException(status_code=400, detail="action không hợp lệ")
+        raise HTTPException(status_code=400, detail="action phải là 'ban' hoặc 'unban'")
 
     db.commit()
     db.refresh(user)
     return {
-        "message": f"Đã cập nhật trạng thái user {user.username}",
+        "message": f"Đã {'ban' if action == 'ban' else 'unban'} user {user.username}",
         "user": {
-            "id":        user.id,
-            "role":      user.role,
-            "ban_until": user.ban_until,
+            "id":   user.id,
+            "role": user.role,
         }
     }
 
 
-@router.delete("/users/{user_id}", status_code=200)
+@router.delete("/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """
-    [THAY ĐỔI 2] Soft delete: không xóa khỏi DB, chỉ set status = 'deleted'
-    """
+    """Xóa user (cascade xóa listings, chat requests liên quan)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Không thể xóa admin")
-
-    user.status = "deleted"
+    db.delete(user)
     db.commit()
-    return {"message": f"Đã xóa user {user.username}"}
 
 
 @router.get("/listings/{listing_id}", response_model=ListingOut)
@@ -160,3 +159,44 @@ def get_listing(listing_id: int, db: Session = Depends(get_db)):
     if not row:
         raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
     return _to_out(row)
+
+
+@router.delete("/listings/{listing_id}", status_code=200)
+def admin_delete_listing(listing_id: int, db: Session = Depends(get_db)):
+    """
+    Admin xóa bài đăng — kể cả khi đang thương lượng.
+    - Đóng tất cả ChatSession active liên quan
+    - Gửi tin nhắn hệ thống thông báo cho 2 bên
+    - Xóa bài đăng
+    """
+    listing = db.query(Listing).filter(Listing.id == listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng")
+
+    # Đóng tất cả session active của bài này
+    active_sessions = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.listing_id == listing_id,
+            ChatSession.status == "active",
+        )
+        .all()
+    )
+
+    for session in active_sessions:
+        session.status = "closed"
+        session.close_reason = "deleted_by_admin"
+        session.closed_at = datetime.utcnow()
+
+        sys_msg = Message(
+            session_id=session.id,
+            sender_id=None,
+            text="Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.",
+            type="system",
+        )
+        db.add(sys_msg)
+
+    db.delete(listing)
+    db.commit()
+
+    return {"message": "Đã xóa bài đăng và đóng các cuộc thương lượng liên quan"}
