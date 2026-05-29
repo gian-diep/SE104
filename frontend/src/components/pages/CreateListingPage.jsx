@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, Clock, X as XIcon, ImagePlus, Loader2, PlusCircle, CheckCircle, BookOpen } from 'lucide-react'
+import { ArrowLeft, Upload, Clock, X, ImagePlus, Loader2, PlusCircle, CheckCircle, BookOpen } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { useAuth } from '@/context/AuthContext'
 import { createListing } from '@/lib/Listingapi.js'
 import { uploadImage, buildImageUrl } from '@/lib/Imageapi.js'
+import { checkContent } from '@/lib/contentFilter.js'
 
 const CATEGORIES = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
 const CONDITIONS = ['Mới', 'Như mới', 'Tốt', 'Khá tốt', 'Trung bình']
@@ -459,7 +460,7 @@ export default function CreateListingPage() {
                         )}
                         <button type="button" onClick={() => removeImage(idx)}
                           className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500">
-                          <XIcon className="h-3 w-3" />
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
                     ))}
