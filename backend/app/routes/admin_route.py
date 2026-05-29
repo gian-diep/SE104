@@ -163,39 +163,39 @@ def get_listing(listing_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/listings/{listing_id}", status_code=200)
 def admin_delete_listing(listing_id: int, db: Session = Depends(get_db)):
-    """
-    Admin xóa bài đăng — kể cả khi đang thương lượng.
-    - Đóng tất cả ChatSession active liên quan
-    - Gửi tin nhắn hệ thống thông báo cho 2 bên
-    - Xóa bài đăng
-    """
     listing = db.query(Listing).filter(Listing.id == listing_id).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng")
 
-    # Đóng tất cả session active của bài này
+    # Đóng session active + thêm tin nhắn hệ thống trước
     active_sessions = (
         db.query(ChatSession)
-        .filter(
-            ChatSession.listing_id == listing_id,
-            ChatSession.status == "active",
-        )
+        .filter(ChatSession.listing_id == listing_id, ChatSession.status == "active")
         .all()
     )
 
-    for session in active_sessions:
-        session.status = "closed"
-        session.close_reason = "deleted_by_admin"
-        session.closed_at = datetime.utcnow()
-
-        sys_msg = Message(
-            session_id=session.id,
+    for s in active_sessions:
+        s.status = "closed"
+        s.close_reason = "deleted_by_admin"
+        s.closed_at = datetime.utcnow()
+        db.add(Message(
+            session_id=s.id,
             sender_id=None,
-            text="🚫 Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.",
+            text="Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.",
             type="system",
-        )
-        db.add(sys_msg)
+        ))
 
+    db.flush()
+
+    # Xóa toàn bộ ChatSession của listing này (cascade xóa messages, ratings)
+    # để tránh FK constraint khi xóa listing
+    all_sessions = db.query(ChatSession).filter(ChatSession.listing_id == listing_id).all()
+    for s in all_sessions:
+        db.delete(s)
+
+    db.flush()
+
+    # Bây giờ xóa listing an toàn (cascade xóa chat_requests còn lại)
     db.delete(listing)
     db.commit()
 
