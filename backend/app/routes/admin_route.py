@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from app.database.database import get_db
-from app.database.models import User, Listing, ChatSession, Message, Notification
+from app.database.models import User, Listing, ChatRequest, ChatSession, Message, Notification
 from app.schemas.listing_schema import ListingOut
 from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -34,6 +34,53 @@ def _to_out(listing) -> ListingOut:
         seller_rating_count=listing.seller.rating_count if listing.seller else 0,
         reject_reason=listing.reject_reason,
     )
+
+
+def _cancel_user_transactions(db: Session, user_id: int):
+    """
+    Hủy toàn bộ giao dịch đang hoạt động của user bị ban:
+      - ChatRequest pending → cancelled
+      - ChatSession active → closed (close_reason='banned')
+        + reset listing.transaction_status về available
+    """
+    # 1. Hủy ChatRequest còn pending (buyer hoặc seller đều hủy)
+    pending_requests = (
+        db.query(ChatRequest)
+        .filter(
+            ChatRequest.status == "pending",
+            (ChatRequest.buyer_id == user_id) | (ChatRequest.seller_id == user_id),
+        )
+        .all()
+    )
+    for req in pending_requests:
+        req.status = "cancelled"
+
+    # 2. Đóng ChatSession đang active
+    active_sessions = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.status == "active",
+            (ChatSession.buyer_id == user_id) | (ChatSession.seller_id == user_id),
+        )
+        .all()
+    )
+    for session in active_sessions:
+        session.status = "closed"
+        session.close_reason = "banned"
+        session.closed_at = datetime.utcnow()
+
+        # Thêm tin nhắn hệ thống vào chat để bên kia thấy lý do
+        db.add(Message(
+            session_id=session.id,
+            sender_id=None,
+            text="⚠️ Cuộc trò chuyện đã bị đóng vì một bên tham gia bị khóa tài khoản.",
+            type="system",
+        ))
+
+        # Reset listing về available nếu đang negotiating
+        listing = db.query(Listing).filter(Listing.id == session.listing_id).first()
+        if listing and listing.transaction_status == "negotiating":
+            listing.transaction_status = "available"
 
 
 @router.get("/listings", response_model=list[ListingOut])
@@ -103,6 +150,10 @@ def update_user_status(
         user.status = "banned"
         user.ban_reason = reason or None
         user.ban_until  = None
+
+        # Hủy toàn bộ giao dịch đang hoạt động
+        _cancel_user_transactions(db, user_id)
+
         db.add(Notification(
             user_id=user.id,
             type="ban_permanent",
