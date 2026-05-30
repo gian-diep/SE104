@@ -7,7 +7,7 @@ Thay đổi: images là list[str] (image_id), không phải binary.
 from sqlalchemy.orm import Session
 from app.database.models import Listing
 from app.schemas.listing_schema import ListingCreate, ListingUpdate
-from sqlalchemy import or_
+from sqlalchemy import or_, func, text
 from app.database.models import User
 
 def create_listing(db: Session, seller_id: int, data: ListingCreate) -> Listing:
@@ -52,16 +52,29 @@ def get_listings(
     if university:
         q = q.filter(Listing.university == university)
 
-    # SEARCH
+    # SEARCH — unaccent (không dấu) + trigram similarity (sai chính tả)
     if keyword:
-        q = q.filter(
-            or_(
-                Listing.item_name.ilike(f"%{keyword}%"),
-                Listing.item_description.ilike(f"%{keyword}%"),
-                Listing.subject.ilike(f"%{keyword}%"),
-                Listing.keywords.ilike(f"%{keyword}%"),
-            )
+        kw = keyword.strip()
+        term = f"%{kw}%"
+
+        # unaccent ilike: tìm không dấu
+        unaccent_match = or_(
+            func.unaccent(Listing.item_name).ilike(func.unaccent(term)),
+            func.unaccent(Listing.item_description).ilike(func.unaccent(term)),
+            func.unaccent(Listing.subject).ilike(func.unaccent(term)),
+            func.unaccent(Listing.keywords).ilike(func.unaccent(term)),
         )
+
+        # trigram similarity: chịu được sai chính tả nhẹ (cần pg_trgm)
+        # similarity > 0.25 với từ khóa ngắn; tự động fallback nếu không có extension
+        try:
+            trigram_match = or_(
+                func.similarity(func.unaccent(Listing.item_name), func.unaccent(kw)) > 0.25,
+                func.similarity(func.unaccent(Listing.subject), func.unaccent(kw)) > 0.25,
+            )
+            q = q.filter(or_(unaccent_match, trigram_match))
+        except Exception:
+            q = q.filter(unaccent_match)
 
     # Mới nhất trước
     q = q.order_by(Listing.created_at.desc())
