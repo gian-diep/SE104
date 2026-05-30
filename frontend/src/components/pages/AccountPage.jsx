@@ -6,17 +6,14 @@ import Footer from '@/components/Footer'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
 import { uploadAvatar, getUserRatings } from '@/lib/Userapi.js'
-import { checkContent } from '@/lib/contentFilter.js'
 import { loginApi } from '@/lib/Authapi.js'
 import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi.js'
-import { uploadImage } from '@/lib/Imageapi.js'
-import { checkAppeal, createAppeal } from '@/lib/Appealapi.js'
 import { API_URL } from '@/lib/Api.js'
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertCircle,
-  Pencil, X, Upload, Save, Info, BookOpen, ClipboardList,
+  Pencil, X as XIcon, Upload, Save, Info, BookOpen, ClipboardList,
   Tag, Banknote, Star, User, RefreshCw, MessageCircle, PlusCircle,
-  Send, RotateCcw, Ban, ShieldX, AlertTriangle,
+  Send, RotateCcw, Ban, ShieldAlert,
 } from 'lucide-react'
 
 const CATEGORIES  = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
@@ -207,208 +204,6 @@ function getInitials(name = '') {
   return name.trim().split(/\s+/).slice(-2).map(w => w[0]?.toUpperCase() || '').join('')
 }
 
-
-// ══════════════════════════════════════════════════════════════════════════════
-// BANNED SCREEN — hiển thị khi user bị khóa tài khoản
-// ══════════════════════════════════════════════════════════════════════════════
-function BannedScreen({ user }) {
-  const [appeal,        setAppeal]        = useState(null)
-  const [loadingAppeal, setLoadingAppeal] = useState(true)
-  const [reason,        setReason]        = useState('')
-  const [imageFiles,    setImageFiles]    = useState([])   // { preview }
-  const [imageUrls,     setImageUrls]     = useState([])   // URLs sau upload
-  const [uploading,     setUploading]     = useState(false)
-  const [submitting,    setSubmitting]    = useState(false)
-  const [error,         setError]         = useState('')
-
-  useEffect(() => {
-    checkAppeal(user.id)
-      .then(res => setAppeal(res.submitted ? res.appeal : null))
-      .catch(() => setAppeal(null))
-      .finally(() => setLoadingAppeal(false))
-  }, [user.id])
-
-  const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files)
-    const remaining = 3 - imageUrls.length
-    if (remaining <= 0) return
-    const toUpload = files.slice(0, remaining)
-    setUploading(true); setError('')
-    try {
-      const results = await Promise.all(toUpload.map(f => uploadImage(f)))
-      setImageUrls(prev => [...prev, ...results.map(r => r.url)].slice(0, 3))
-      setImageFiles(prev => [...prev, ...toUpload.map(f => ({ preview: URL.createObjectURL(f) }))].slice(0, 3))
-    } catch {
-      setError('Upload ảnh thất bại, vui lòng thử lại.')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const removeImage = (idx) => {
-    setImageUrls(prev => prev.filter((_, i) => i !== idx))
-    setImageFiles(prev => prev.filter((_, i) => i !== idx))
-  }
-
-  const handleSubmit = async () => {
-    if (!reason.trim()) { setError('Vui lòng nhập nội dung khiếu nại.'); return }
-    setSubmitting(true); setError('')
-    try {
-      const res = await createAppeal({ user_id: user.id, reason: reason.trim(), images: imageUrls })
-      setAppeal(res)
-    } catch (e) {
-      setError(e.message || 'Không thể gửi khiếu nại.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const statusStyles = {
-    pending:  { cls: 'bg-amber-50 text-amber-700 border-amber-200',      label: 'Đang chờ xét duyệt' },
-    approved: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Đã chấp thuận'      },
-    rejected: { cls: 'bg-red-50 text-red-700 border-red-200',             label: 'Đã từ chối'          },
-  }
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-lg">
-        <div className="bg-white rounded-3xl border border-red-100 shadow-card overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
-
-          {/* Header */}
-          <div className="px-8 pt-8 pb-6 border-b border-red-50 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
-              <ShieldX className="w-8 h-8 text-red-500" />
-            </div>
-            <h1 className="font-heading text-2xl uppercase tracking-wide text-gray-900 mb-2">
-              Tài khoản bị khóa
-            </h1>
-            {user.ban_until ? (
-              <p className="text-sm text-muted-foreground">
-                Khóa đến{' '}
-                <span className="font-semibold text-red-600">
-                  {new Date(user.ban_until).toLocaleDateString('vi-VN')}
-                </span>
-              </p>
-            ) : (
-              <p className="text-sm font-semibold text-red-600">Khóa vĩnh viễn</p>
-            )}
-          </div>
-
-          <div className="px-8 py-6 space-y-5">
-            {/* Lý do ban */}
-            {user.ban_reason && (
-              <div className="rounded-xl border border-red-100 bg-red-50/60 px-4 py-3">
-                <p className="text-[11px] font-heading uppercase tracking-widest text-red-500 mb-1">Lý do bị khóa</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{user.ban_reason}</p>
-              </div>
-            )}
-
-            <div className="border-t border-gray-100" />
-
-            {loadingAppeal ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : appeal ? (
-              /* Đã gửi — hiển thị trạng thái */
-              <div className="space-y-3">
-                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground">Khiếu nại của bạn</p>
-                <div className="rounded-xl border border-teal-100 bg-teal-50/40 px-4 py-3 space-y-2">
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
-
-                  {appeal.images?.length > 0 && (
-                    <div className="flex gap-2 flex-wrap pt-1">
-                      {appeal.images.map((url, i) => (
-                        <img key={i} src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-teal-100" />
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className={`text-[11px] font-heading uppercase px-2.5 py-1 rounded-full border ${statusStyles[appeal.status]?.cls}`}>
-                      {statusStyles[appeal.status]?.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(appeal.created_at).toLocaleDateString('vi-VN')}
-                    </span>
-                  </div>
-
-                  {appeal.admin_note && (
-                    <div className="mt-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100">
-                      <p className="text-[11px] font-heading uppercase tracking-widest text-blue-600 mb-1">Phản hồi từ Admin</p>
-                      <p className="text-xs text-blue-800">{appeal.admin_note}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* Chưa gửi — form khiếu nại */
-              <div className="space-y-4">
-                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground">Gửi khiếu nại</p>
-                <textarea
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  placeholder="Trình bày lý do bạn cho rằng tài khoản bị khóa không đúng..."
-                  rows={4}
-                  className="w-full rounded-xl border border-teal-100 bg-surface px-4 py-3 text-sm font-paragraph resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
-                />
-
-                {/* Upload ảnh */}
-                <div>
-                  <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-2">
-                    Đính kèm ảnh bằng chứng{' '}
-                    <span className="normal-case text-muted-foreground/60">(tùy chọn, tối đa 3)</span>
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {imageFiles.map((img, i) => (
-                      <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-teal-100 shadow-soft">
-                        <img src={img.preview} alt="" className="w-full h-full object-cover" />
-                        <button
-                          onClick={() => removeImage(i)}
-                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70 transition-colors"
-                        >×</button>
-                      </div>
-                    ))}
-                    {imageUrls.length < 3 && (
-                      <label className={`w-20 h-20 rounded-xl border-2 border-dashed border-teal-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-teal-50/50 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <Upload className="w-5 h-5 text-muted-foreground mb-1" />
-                        <span className="text-[10px] text-muted-foreground">{uploading ? 'Đang tải...' : 'Thêm ảnh'}</span>
-                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} disabled={uploading} />
-                      </label>
-                    )}
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
-                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-                    <p className="text-xs text-red-600">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || uploading}
-                  className="w-full py-3 rounded-xl bg-teal-gradient text-white font-heading text-sm uppercase tracking-widest shadow-btn hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Đang gửi...' : 'Gửi khiếu nại'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <p className="text-center mt-6">
-          <Link to="/" className="text-xs font-heading uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-            ← Về trang chủ
-          </Link>
-        </p>
-      </div>
-    </div>
-  )
-}
-
 function ModerationBadge({ status }) {
   const map = {
     pending:  { label: 'Chờ duyệt',  Icon: Clock,       cls: 'text-amber-600 bg-amber-50 border-amber-200' },
@@ -437,7 +232,6 @@ function TransactionBadge({ status }) {
   )
 }
 
-// ✅ onClick prop wired — clicking the "(N đánh giá)" text opens the modal
 function StarRating({ rating, count, onClick }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -477,7 +271,6 @@ function RatingsModal({ userId, onClose }) {
 
   return (
   <>
-    {/* Backdrop */}
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -486,7 +279,6 @@ function RatingsModal({ userId, onClose }) {
       onClick={onClose}
     />
 
-    {/* Modal wrapper */}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -499,7 +291,6 @@ function RatingsModal({ userId, onClose }) {
                    flex flex-col max-h-[80vh]
                    overflow-hidden border border-teal-100"
       >
-        {/* Header */}
         <div className="px-6 py-5 flex items-center justify-between flex-shrink-0 bg-teal-gradient">
           <div>
             <p className="font-heading text-white/70 text-xs uppercase tracking-widest mb-0.5">
@@ -516,11 +307,10 @@ function RatingsModal({ userId, onClose }) {
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
           >
-            <X className="h-4 w-4 text-white" />
+            <XIcon className="h-4 w-4 text-white" />
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 bg-background">
           {loading && (
             <div className="py-12 flex flex-col items-center gap-3">
@@ -528,154 +318,102 @@ function RatingsModal({ userId, onClose }) {
                 <div className="absolute inset-0 rounded-full border-4 border-teal-100" />
                 <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
               </div>
-
-              <p className="font-paragraph text-sm text-muted-foreground">
-                Đang tải...
-              </p>
+              <p className="font-paragraph text-sm text-muted-foreground">Đang tải...</p>
             </div>
           )}
 
-          {!loading &&
-            (!data?.ratings || data.ratings.length === 0) && (
-              <div className="py-12 text-center">
-                <Star className="h-10 w-10 text-teal-100 mx-auto mb-3" />
-                <p className="font-heading text-sm font-bold text-muted-foreground">
-                  Chưa có đánh giá nào
-                </p>
-              </div>
-            )}
+          {!loading && (!data?.ratings || data.ratings.length === 0) && (
+            <div className="py-12 text-center">
+              <Star className="h-10 w-10 text-teal-100 mx-auto mb-3" />
+              <p className="font-heading text-sm font-bold text-muted-foreground">Chưa có đánh giá nào</p>
+            </div>
+          )}
 
-          {!loading &&
-            data?.ratings?.map(r => {
-              const listingImage = r.listing_image
-                ? getImageUrl(r.listing_image)
-                : null
+          {!loading && data?.ratings?.map(r => {
+            const listingImage = r.listing_image ? getImageUrl(r.listing_image) : null
+            return (
+              <div key={r.id} className="bg-white rounded-2xl border border-teal-100 shadow-soft p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-sm font-black text-primary">
+                    {r.rater_avatar ? (
+                      <img src={getAvatarUrl(r.rater_avatar)} alt={r.rater_name} className="w-full h-full object-cover" />
+                    ) : (
+                      getInitials(r.rater_name)
+                    )}
+                  </div>
 
-              return (
-                <div
-                  key={r.id}
-                  className="bg-white rounded-2xl border border-teal-100 shadow-soft p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Avatar */}
-                    <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-sm font-black text-primary">
-                      {r.rater_avatar ? (
-                        <img
-                          src={getAvatarUrl(r.rater_avatar)}
-                          alt={r.rater_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        getInitials(r.rater_name)
-                      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-heading text-sm font-bold text-foreground truncate">{r.rater_name}</span>
+                      <span className="font-paragraph text-xs text-muted-foreground flex-shrink-0">
+                        {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                      </span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      {/* User + date */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="font-heading text-sm font-bold text-foreground truncate">
-                          {r.rater_name}
-                        </span>
-
-                        <span className="font-paragraph text-xs text-muted-foreground flex-shrink-0">
-                          {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                    {r.rated_role && (
+                      <div className="mb-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
+                          r.rated_role === 'seller'
+                            ? 'bg-blue-50 text-blue-600 border-blue-200'
+                            : 'bg-purple-50 text-purple-600 border-purple-200'
+                        }`}>
+                          {r.rated_role === 'seller' ? (
+                            <>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
+                              </svg>
+                              Đánh giá với tư cách Người bán
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                              </svg>
+                              Đánh giá với tư cách Người mua
+                            </>
+                          )}
                         </span>
                       </div>
+                    )}
 
-                      {r.rated_role && (
-                          <div className="mb-2">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-heading uppercase tracking-widest border ${
-                                r.rated_role === 'seller'
-                                  ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                  : 'bg-purple-50 text-purple-600 border-purple-200'
-                              }`}
-                            >
-                              {r.rated_role === 'seller' ? (
-                                <>
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
-                                  </svg>
-                                  Đánh giá với tư cách Người bán
-                                </>
-                              ) : (
-                                <>
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                  </svg>
-                                  Đánh giá với tư cách Người mua
-                                </>
-                              )}
-                            </span>
-                          </div>
-                        )}
+                    <div className="flex items-center gap-0.5 mb-3">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className={`h-3.5 w-3.5 ${s <= r.stars ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/20'}`} />
+                      ))}
+                    </div>
 
-                      {/* Stars */}
-                      <div className="flex items-center gap-0.5 mb-3">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <Star
-                            key={s}
-                            className={`h-3.5 w-3.5 ${
-                              s <= r.stars
-                                ? 'text-amber-400 fill-amber-400'
-                                : 'text-muted-foreground/20'
-                            }`}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Listing info */}
-                      {(r.listing_name ||
-                        r.listing?.item_name) && (
-                        <Link
-                          to={`/listings/${
-                            r.listing_id || r.listing?.id
-                          }`}
-                          className="mb-3 block"
-                        >
-                          <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-2.5 hover:border-primary transition-colors">
-                            <div className="flex items-center gap-3">
-                              {listingImage && (
-                                <img
-                                  src={listingImage}
-                                  alt="listing"
-                                  className="w-14 h-14 rounded-lg object-cover border border-teal-100 flex-shrink-0"
-                                />
-                              )}
-
-                              <div className="min-w-0">
-                                <p className="font-heading text-xs uppercase tracking-wide text-primary mb-0.5">
-                                  Đánh giá cho bài đăng
-                                </p>
-
-                                <p className="font-heading text-sm font-bold text-foreground truncate">
-                                  {r.listing_name ||
-                                    r.listing?.item_name}
-                                </p>
-                              </div>
+                    {(r.listing_name || r.listing?.item_name) && (
+                      <Link to={`/listings/${r.listing_id || r.listing?.id}`} className="mb-3 block">
+                        <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-2.5 hover:border-primary transition-colors">
+                          <div className="flex items-center gap-3">
+                            {listingImage && (
+                              <img src={listingImage} alt="listing" className="w-14 h-14 rounded-lg object-cover border border-teal-100 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-heading text-xs uppercase tracking-wide text-primary mb-0.5">Đánh giá cho bài đăng</p>
+                              <p className="font-heading text-sm font-bold text-foreground truncate">{r.listing_name || r.listing?.item_name}</p>
                             </div>
                           </div>
-                        </Link>
-                      )}
+                        </div>
+                      </Link>
+                    )}
 
-                      {/* Comment */}
-                      {r.comment && (
-                        <p className="font-paragraph text-sm text-foreground leading-relaxed">
-                          {r.comment}
-                        </p>
-                      )}
-                    </div>
+                    {r.comment && (
+                      <p className="font-paragraph text-sm text-foreground leading-relaxed">{r.comment}</p>
+                    )}
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            )
+          })}
         </div>
       </motion.div>
     </div>
   </>
-)
+  )
 }
 
+// ── Edit Panel ────────────────────────────────────────────────────────────────
 // ── Edit Panel ────────────────────────────────────────────────────────────────
 function EditPanel({ listing, onClose, onSaved }) {
   const isResubmit = listing.status === 'rejected'
@@ -690,11 +428,42 @@ function EditPanel({ listing, onClose, onSaved }) {
     university:       listing.university       || '',
     keywords:         listing.keywords         || '',
   })
+
+  // ── Image state ───────────────────────────────────────────────────────────
+  const [images, setImages]           = useState(listing.images || [])   // existing IDs
+  const [newFiles, setNewFiles]       = useState([])                      // File objects to upload
+  const [newPreviews, setNewPreviews] = useState([])                      // data-URL previews
+  const [uploadingIdx, setUploadingIdx] = useState(null)                  // which new img is uploading
+
   const [error, setError]   = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
 
   const set = f => e => setForm(p => ({ ...p, [f]: e.target.value }))
+
+  // Remove an existing image
+  const removeExisting = (idx) => setImages(prev => prev.filter((_, i) => i !== idx))
+
+  // Add new files (preview only, upload on save)
+  const handleNewImages = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    const remaining = 5 - images.length - newFiles.length
+    const accepted  = files.slice(0, remaining)
+    setNewFiles(prev => [...prev, ...accepted])
+    accepted.forEach(f => {
+      const reader = new FileReader()
+      reader.onloadend = () => setNewPreviews(prev => [...prev, reader.result])
+      reader.readAsDataURL(f)
+    })
+    e.target.value = ''
+  }
+
+  // Remove a pending-upload file
+  const removeNew = (idx) => {
+    setNewFiles(prev    => prev.filter((_, i) => i !== idx))
+    setNewPreviews(prev => prev.filter((_, i) => i !== idx))
+  }
 
   const handleSave = async () => {
     setError('')
@@ -702,11 +471,28 @@ function EditPanel({ listing, onClose, onSaved }) {
     if (!form.category)          { setError('Vui lòng chọn phân loại');    return }
     if (!form.condition)         { setError('Vui lòng chọn tình trạng');   return }
     const price = form.item_price === '' ? 0 : parseFloat(form.item_price)
-    
     if (isNaN(price) || price < 0) { setError('Giá không hợp lệ'); return }
 
     setSaving(true)
     try {
+      // 1. Upload new images one by one
+      const uploadedIds = []
+      for (let i = 0; i < newFiles.length; i++) {
+        setUploadingIdx(i)
+        const formData = new FormData()
+        formData.append('file', newFiles[i])
+        const res = await fetch(`${API_URL}/images/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: formData,
+        })
+        if (!res.ok) throw new Error(`Upload ảnh ${i + 1} thất bại`)
+        const data = await res.json()
+        uploadedIds.push(data.image_id ?? data.id ?? data.filename)
+      }
+      setUploadingIdx(null)
+
+      // 2. Save listing with merged image list
       await updateListing(listing.id, {
         item_name:        form.item_name.trim(),
         item_price:       price,
@@ -716,11 +502,13 @@ function EditPanel({ listing, onClose, onSaved }) {
         subject:          form.subject,
         university:       form.university,
         keywords:         form.keywords.trim(),
+        images:           [...images, ...uploadedIds],
         ...(isResubmit && { status: 'pending' }),
       })
       setSaved(true)
       setTimeout(() => { onSaved(); onClose() }, 900)
     } catch (err) {
+      setUploadingIdx(null)
       setError(err.message || 'Lỗi khi lưu')
     } finally {
       setSaving(false)
@@ -730,6 +518,8 @@ function EditPanel({ listing, onClose, onSaved }) {
   const inputCls  = 'h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm'
   const selectCls = 'w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30'
   const labelCls  = 'font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground'
+
+  const totalImages = images.length + newFiles.length
 
   return (
     <>
@@ -741,6 +531,7 @@ function EditPanel({ listing, onClose, onSaved }) {
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-white shadow-2xl flex flex-col rounded-l-3xl overflow-hidden border-l border-teal-100"
       >
+        {/* Header */}
         <div className={`px-6 py-5 flex items-center justify-between flex-shrink-0 ${isResubmit ? 'bg-gradient-to-r from-red-500 to-rose-500' : 'bg-teal-gradient'}`}>
           <div>
             <p className="font-heading text-white/70 text-xs uppercase tracking-widest mb-0.5">
@@ -749,10 +540,11 @@ function EditPanel({ listing, onClose, onSaved }) {
             <h2 className="font-heading text-white font-bold text-base leading-tight line-clamp-1">{listing.item_name}</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-            <X className="h-4 w-4 text-white" />
+            <XIcon className="h-4 w-4 text-white" />
           </button>
         </div>
 
+        {/* Reject reason banner */}
         {isResubmit && listing.reject_reason && (
           <div className="flex items-start gap-3 px-6 py-4 bg-red-50 border-b border-red-200 flex-shrink-0">
             <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -777,7 +569,89 @@ function EditPanel({ listing, onClose, onSaved }) {
           </div>
         )}
 
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-background">
+
+          {/* ── Image manager ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className={labelCls}>Ảnh bài đăng</label>
+              <span className="font-paragraph text-xs text-muted-foreground">{totalImages}/5 ảnh</span>
+            </div>
+
+            {totalImages === 0 ? (
+              <div className="rounded-xl border-2 border-dashed border-teal-100 bg-teal-50/40 py-8 flex flex-col items-center gap-2 text-muted-foreground">
+                <Upload className="h-7 w-7 text-teal-300" />
+                <p className="font-paragraph text-sm">Chưa có ảnh nào</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {/* Existing images */}
+                {images.map((imgId, idx) => (
+                  <div key={imgId} className="relative group aspect-square rounded-xl overflow-hidden border border-teal-100 bg-surface">
+                    <img
+                      src={getImageUrl(imgId)}
+                      alt={`ảnh ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeExisting(idx)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <XIcon className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* New images (pending upload) */}
+                {newPreviews.map((src, idx) => (
+                  <div key={`new-${idx}`} className="relative group aspect-square rounded-xl overflow-hidden border-2 border-dashed border-primary/40 bg-teal-50">
+                    <img src={src} alt={`mới ${idx + 1}`} className="w-full h-full object-cover opacity-80" />
+                    {/* uploading overlay */}
+                    {saving && uploadingIdx === idx && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      </div>
+                    )}
+                    {/* "Chưa lưu" badge */}
+                    {!saving && (
+                      <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-primary/80 text-white font-heading text-[9px] uppercase tracking-wide">
+                        Mới
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeNew(idx)}
+                      disabled={saving}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all disabled:opacity-40"
+                    >
+                      <XIcon className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload button — only show if < 5 total */}
+            {totalImages < 5 && (
+              <label className="flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-teal-200 bg-teal-50/60 hover:bg-teal-50 hover:border-primary cursor-pointer transition-colors">
+                <Upload className="h-4 w-4 text-primary" />
+                <span className="font-heading text-xs font-semibold text-primary uppercase tracking-wide">
+                  Thêm ảnh ({5 - totalImages} còn lại)
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleNewImages}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          {/* ── Text fields (giữ nguyên) ── */}
           <div className="space-y-1.5">
             <label className={labelCls}>Tên tài liệu *</label>
             <Input value={form.item_name} onChange={set('item_name')} placeholder="VD: Giáo trình Giải tích 1" className={inputCls} />
@@ -798,37 +672,20 @@ function EditPanel({ listing, onClose, onSaved }) {
               </select>
             </div>
           </div>
-          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className={labelCls}>Môn học</label>
-              {/* ĐÃ FIX Ở ĐÂY */}
-              <SelectWithCustom 
-                value={form.subject} 
-                onChange={set('subject')} 
-                options={SUBJECTS} 
-                placeholder="-- Chọn tên môn học --" 
-                className={selectCls} 
-              />
+              <SelectWithCustom value={form.subject} onChange={set('subject')} options={SUBJECTS} placeholder="-- Chọn tên môn học --" className={selectCls} />
             </div>
             <div className="space-y-1.5">
               <label className={labelCls}>Giá (VNĐ)</label>
               <Input type="number" min="0" value={form.item_price} onChange={set('item_price')} placeholder="0 = Miễn phí" className={inputCls} />
             </div>
           </div>
-          
           <div className="space-y-1.5">
             <label className={labelCls}>Trường đại học</label>
-            {/* ĐÃ FIX Ở ĐÂY */}
-            <SelectWithCustom 
-              value={form.university} 
-              onChange={set('university')} 
-              options={UNIVERSITIES} 
-              placeholder="-- Chọn trường --" 
-              className={selectCls} 
-            />
+            <SelectWithCustom value={form.university} onChange={set('university')} options={UNIVERSITIES} placeholder="-- Chọn trường --" className={selectCls} />
           </div>
-          
           <div className="space-y-1.5">
             <label className={labelCls}>Mô tả chi tiết</label>
             <textarea value={form.item_description} onChange={set('item_description')} rows={4}
@@ -841,6 +698,7 @@ function EditPanel({ listing, onClose, onSaved }) {
           </div>
         </div>
 
+        {/* Footer */}
         <div className="px-6 py-4 border-t border-teal-100 flex-shrink-0 space-y-3 bg-white">
           {isResubmit && !error && !saved && (
             <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
@@ -856,6 +714,15 @@ function EditPanel({ listing, onClose, onSaved }) {
               <p className="font-paragraph text-sm text-red-500">{error}</p>
             </div>
           )}
+          {/* Upload progress indicator */}
+          {saving && uploadingIdx !== null && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 border border-teal-200 rounded-xl">
+              <div className="w-4 h-4 rounded-full border-2 border-teal-200 border-t-primary animate-spin flex-shrink-0" />
+              <p className="font-paragraph text-xs text-teal-700">
+                Đang tải ảnh {uploadingIdx + 1}/{newFiles.length}...
+              </p>
+            </div>
+          )}
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving || saved}
               className={`flex-1 h-12 rounded-xl text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:translate-y-0 ${
@@ -866,7 +733,7 @@ function EditPanel({ listing, onClose, onSaved }) {
               {saved ? (
                 <><CheckCircle className="h-4 w-4" />{isResubmit ? 'Đã gửi lại!' : 'Đã lưu!'}</>
               ) : saving ? (
-                isResubmit ? 'Đang gửi...' : 'Đang lưu...'
+                uploadingIdx !== null ? `Tải ảnh ${uploadingIdx + 1}/${newFiles.length}...` : (isResubmit ? 'Đang gửi...' : 'Đang lưu...')
               ) : isResubmit ? (
                 <><RotateCcw className="h-4 w-4" />Gửi lại để duyệt</>
               ) : (
@@ -898,10 +765,8 @@ export default function AccountPage() {
   const [message, setMessage]             = useState('')
   const [saving, setSaving]               = useState(false)
 
-  // ✅ showRatings state — controls the modal
   const [showRatings, setShowRatings] = useState(false)
 
-  // Rating từ API (luôn fresh, không phụ thuộc localStorage)
   const [ratingData, setRatingData] = useState(null)
   useEffect(() => {
     if (!currentUser?.id) return
@@ -923,7 +788,7 @@ export default function AccountPage() {
   const [editingListing,  setEditingListing]  = useState(null)
   const [deleteModal, setDeleteModal] = useState({
     open: false,
-    type: null, // 'account' | 'listing'
+    type: null,   // 'account' | 'listing' | 'negotiating'
     listing: null,
   })
 
@@ -971,14 +836,14 @@ export default function AccountPage() {
         }
       }
 
-      let avatarUrl = currentUser?.avatar_url || null
+      let avatarUrl = undefined
       if (avatarFile) {
         const res = await uploadAvatar(avatarFile)
         avatarUrl = res.avatar_id
       }
       await updateProfile({
-        username:   username.trim() || undefined,
-        university: university.trim() || undefined,
+        username:   username.trim() || currentUser.username,
+        university: university.trim() || currentUser.university,
         avatar_url: avatarUrl,
         password:   password || undefined,
       })
@@ -991,25 +856,16 @@ export default function AccountPage() {
   }
 
   const handleDeleteAccount = async () => {
-    setDeleteModal({
-      open: true,
-      type: 'account',
-      listing: null,
-    })
+    setDeleteModal({ open: true, type: 'account', listing: null })
   }
 
-const handleDeleteListing = (listing) => {
-  if (listing.transaction_status === 'negotiating') {
-    alert('Không thể xóa bài đăng đang trong tình trạng thương lượng.')
-    return
+  const handleDeleteListing = (listing) => {
+    if (listing.transaction_status === 'negotiating') {
+      setDeleteModal({ open: true, type: 'negotiating', listing })
+      return
+    }
+    setDeleteModal({ open: true, type: 'listing', listing })
   }
-
-  setDeleteModal({
-    open: true,
-    type: 'listing',
-    listing,
-  })
-}
 
   const confirmDelete = async () => {
     try {
@@ -1018,17 +874,11 @@ const handleDeleteListing = (listing) => {
         navigate('/')
         return
       }
-
       if (deleteModal.type === 'listing') {
         await deleteListingApi(deleteModal.listing.id)
         loadMyListings()
       }
-
-      setDeleteModal({
-        open: false,
-        type: null,
-        listing: null,
-      })
+      setDeleteModal({ open: false, type: null, listing: null })
     } catch (err) {
       alert(err.message || 'Có lỗi xảy ra')
     }
@@ -1039,15 +889,16 @@ const handleDeleteListing = (listing) => {
     catch (err) { alert(err.message || 'Lỗi khi cập nhật trạng thái giao dịch') }
   }
 
-  const activeListings = myListings.filter(l => l.status !== 'deleted')
   const counts = {
-    all:      activeListings.length,
-    pending:  activeListings.filter(l => l.status === 'pending').length,
-    approved: activeListings.filter(l => l.status === 'approved').length,
-    rejected: activeListings.filter(l => l.status === 'rejected').length,
+    all:      myListings.length,
+    pending:  myListings.filter(l => l.status === 'pending').length,
+    approved: myListings.filter(l => l.status === 'approved').length,
+    rejected: myListings.filter(l => l.status === 'rejected').length,
   }
-  const visibleListings = listingFilter === 'all' ? activeListings : activeListings.filter(l => l.status === listingFilter)
+  const visibleListings = listingFilter === 'all' ? myListings : myListings.filter(l => l.status === listingFilter)
   const avatarSrc = avatarPreview || getAvatarUrl(currentUser?.avatar_url)
+
+  const isNegotiating = deleteModal.type === 'negotiating'
 
   if (isLoading) {
     return (
@@ -1061,9 +912,6 @@ const handleDeleteListing = (listing) => {
   }
 
   if (!currentUser) { navigate('/', { replace: true }); return null }
-
-  // Nếu bị ban → hiển thị màn hình khóa + form khiếu nại
-  if (currentUser.status === 'banned') return <BannedScreen user={currentUser} />
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -1087,136 +935,131 @@ const handleDeleteListing = (listing) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* ══ CỘT TRÁI: HỒ SƠ ══ */}
           <div className="space-y-5">
-        {/* ══ TAB: HỒ SƠ ══ */}
-        {true && (
-          <form onSubmit={handleProfileSubmit} className="space-y-5">
-            <div className="bg-white rounded-3xl border border-teal-100 shadow-card overflow-hidden">
-
-              <div className="px-6 pt-6 pb-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-16 h-16 rounded-full border-4 border-white shadow-card overflow-hidden">
-                      {avatarSrc ? (
-                        <img
-                          src={avatarSrc}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
-                          style={{ backgroundColor: avatarColor(currentUser?.username) }}
-                        >
-                          {getInitials(currentUser?.username)}
-                        </div>
-                      )}
+            <form onSubmit={handleProfileSubmit} className="space-y-5">
+              <div className="bg-white rounded-3xl border border-teal-100 shadow-card overflow-hidden">
+                <div className="px-6 pt-6 pb-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-16 h-16 rounded-full border-4 border-white shadow-card overflow-hidden">
+                        {avatarSrc ? (
+                          <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center font-heading text-xl font-black text-white"
+                            style={{ backgroundColor: avatarColor(currentUser?.username) }}
+                          >
+                            {getInitials(currentUser?.username)}
+                          </div>
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-btn">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                      </label>
                     </div>
 
-                    {/* upload btn */}
-                    <label className="absolute bottom-0 right-0 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-btn">
-                      <Upload className="h-3 w-3" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex-1 min-w-0 pb-1">
+                      <p className="font-heading text-2xl font-black truncate text-foreground">{currentUser?.username}</p>
+                      <p className="font-paragraph text-sm text-muted-foreground">{currentUser?.email}</p>
+                    </div>
+
+                    {currentUser.role === 'admin' && (
+                      <span className="mb-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-heading text-[10px] font-semibold uppercase tracking-wide border border-primary/20">
+                        Admin
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex-1 min-w-0 pb-1">
-                    <p className="font-heading text-2xl font-black truncate text-foreground">{currentUser?.username}</p>
-                    <p className="font-paragraph text-sm text-muted-foreground">{currentUser?.email}</p>
-                  </div>
-
-                  {currentUser.role === 'admin' && (
-                    <span className="mb-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-heading text-[10px] font-semibold uppercase tracking-wide border border-primary/20">
-                      Admin
-                    </span>
-                  )}
+                  <StarRating
+                    rating={ratingData?.rating ?? currentUser.rating ?? 0}
+                    count={ratingData?.rating_count ?? currentUser.rating_count ?? 0}
+                    onClick={() => setShowRatings(true)}
+                  />
                 </div>
-
-                {/* ✅ onClick opens RatingsModal */}
-                <StarRating
-                  rating={ratingData?.rating ?? currentUser.rating ?? 0}
-                  count={ratingData?.rating_count ?? currentUser.rating_count ?? 0}
-                  onClick={() => setShowRatings(true)}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-teal-100 shadow-soft p-6 space-y-4">
-              <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground border-b border-teal-50 pb-3">Chỉnh sửa hồ sơ</h3>
-
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tên người dùng</label>
-                <Input value={username} onChange={e => setUsername(e.target.value)}
-                  className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</label>
-                <Input value={currentUser?.email || ''} disabled
-                  className="h-11 rounded-xl border-teal-100 font-paragraph bg-surface text-sm opacity-50" />
-                <p className="font-paragraph text-xs text-muted-foreground">Email không thể thay đổi</p>
-              </div>
+              <div className="bg-white rounded-2xl border border-teal-100 shadow-soft p-6 space-y-4">
+                <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-foreground border-b border-teal-50 pb-3">Chỉnh sửa hồ sơ</h3>
 
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường học</label>
-                <SelectWithCustom 
-                  value={university} 
-                  onChange={e => setUniversity(e.target.value)} 
-                  options={UNIVERSITIES} 
-                  placeholder="-- Chọn trường --" 
-                  className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" 
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu mới</label>
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Để trống nếu không đổi"
-                  className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
-              </div>
-
-              {password && (
                 <div className="space-y-1.5">
-                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại *</label>
-                  <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Nhập mật khẩu hiện tại để xác nhận"
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tên người dùng</label>
+                  <Input value={username} onChange={e => setUsername(e.target.value.slice(0, 24))}
+                    maxLength={24}
                     className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm" />
-                  <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc khi đổi mật khẩu mới</p>
+                  <p className={`text-xs text-right ${username.length >= 24 ? 'text-red-400' : 'text-muted-foreground'}`}>
+                    {username.length}/24
+                  </p>
                 </div>
-              )}
 
-              {message && (
-                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-paragraph text-sm ${
-                  message.includes('thành công')
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                    : 'bg-red-50 border-red-200 text-red-600'
-                }`}>
-                  {message.includes('thành công') ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                  {message}
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</label>
+                  <Input value={currentUser?.email || ''} disabled
+                    className="h-11 rounded-xl border-teal-100 font-paragraph bg-surface text-sm opacity-50" />
+                  <p className="font-paragraph text-xs text-muted-foreground">Email không thể thay đổi</p>
                 </div>
-              )}
 
-              <div className="flex gap-3 pt-1">
-                <button type="submit" disabled={saving}
-                  className="flex-1 h-11 rounded-xl bg-teal-gradient text-white font-heading font-semibold text-sm shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:translate-y-0">
-                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-                <button type="button" onClick={handleDeleteAccount}
-                  className="h-11 px-4 rounded-xl border border-red-200 bg-red-50 text-red-500 font-heading font-semibold text-sm hover:bg-red-100 transition-colors">
-                  Xóa tài khoản
-                </button>
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trường học</label>
+                  <SelectWithCustom 
+                    value={university} 
+                    onChange={e => setUniversity(e.target.value)} 
+                    options={UNIVERSITIES} 
+                    placeholder="-- Chọn trường --" 
+                    className="w-full h-11 rounded-xl border border-teal-100 bg-surface font-paragraph text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu hiện tại</label>
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="Nhập nếu muốn đổi mật khẩu"
+                    autoComplete="current-password"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Mật khẩu mới</label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Để trống nếu không đổi"
+                    autoComplete="new-password"
+                    className="h-11 rounded-xl border-teal-100 focus-visible:ring-primary font-paragraph bg-surface text-sm"
+                  />
+                  <p className="font-paragraph text-xs text-muted-foreground">Bắt buộc nhập mật khẩu hiện tại khi đổi mật khẩu mới</p>
+                </div>
+
+                {message && (
+                  <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border font-paragraph text-sm ${
+                    message.includes('thành công')
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                      : 'bg-red-50 border-red-200 text-red-600'
+                  }`}>
+                    {message.includes('thành công') ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    {message}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button type="submit" disabled={saving}
+                    className="flex-1 h-11 rounded-xl bg-teal-gradient text-white font-heading font-semibold text-sm shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:translate-y-0">
+                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                  <button type="button" onClick={handleDeleteAccount}
+                    className="h-11 px-4 rounded-xl border border-red-200 bg-red-50 text-red-500 font-heading font-semibold text-sm hover:bg-red-100 transition-colors">
+                    Xóa tài khoản
+                  </button>
+                </div>
               </div>
-            </div>
-          </form>
-        )}
+            </form>
           </div>
 
           {/* ══ CỘT PHẢI: BÀI ĐĂNG ══ */}
-          <div>
-        {/* ══ TAB: BÀI ĐĂNG ══ */}
-        {true && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <div className="flex gap-1.5 flex-wrap">
@@ -1391,123 +1234,106 @@ const handleDeleteListing = (listing) => {
               </div>
             )}
           </div>
-        )}
-          </div>
         </div>
       </div>
 
       <Footer />
 
       {deleteModal.open && (
-      <>
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
-          onClick={() =>
-            setDeleteModal({
-              open: false,
-              type: null,
-              listing: null,
-            })
-          }
-        />
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteModal({ open: false, type: null, listing: null })}
+          />
 
-        {/* Modal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 24, stiffness: 260 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-        >
-          <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 260 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          >
+            <div className={`w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] border ${isNegotiating ? 'border-amber-100' : 'border-red-100'}`}>
+              {/* top bar */}
+              <div className={`h-1 bg-gradient-to-r ${isNegotiating ? 'from-amber-300 via-orange-400 to-amber-400' : 'from-red-400 via-rose-500 to-red-500'}`} />
 
-            {/* Top Accent */}
-            <div className="h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
-
-            {/* Header */}
-            <div className="border-b border-red-100 bg-gradient-to-b from-red-50/70 to-white px-7 py-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-100">
-                  <Trash2 className="h-7 w-7 text-red-500" />
-                </div>
-
-                <div>
-                  <p className="font-heading text-lg font-bold uppercase text-gray-900">
-                    {deleteModal.type === 'account'
-                      ? 'Xóa tài khoản'
-                      : 'Xóa bài đăng'}
-                  </p>
-
-                  <p className="text-sm text-gray-500 mt-1">
-                    Hành động này không thể hoàn tác.
-                  </p>
+              {/* header */}
+              <div className={`border-b px-7 py-6 bg-gradient-to-b to-white ${isNegotiating ? 'border-amber-100 from-amber-50/70' : 'border-red-100 from-red-50/70'}`}>
+                <div className="flex items-center gap-4">
+                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${isNegotiating ? 'bg-amber-100' : 'bg-red-100'}`}>
+                    {isNegotiating
+                      ? <ShieldAlert className="h-7 w-7 text-amber-500" />
+                      : <Trash2 className="h-7 w-7 text-red-500" />
+                    }
+                  </div>
+                  <div>
+                    <p className="font-heading text-lg font-bold uppercase text-gray-900">
+                      {deleteModal.type === 'account' ? 'Xóa tài khoản' : isNegotiating ? 'Không thể xóa' : 'Xóa bài đăng'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {isNegotiating ? 'Bài đăng đang trong quá trình thương lượng.' : 'Hành động này không thể hoàn tác.'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Body */}
-            <div className="px-7 py-6">
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {deleteModal.type === 'account'
-                  ? 'Bạn có chắc chắn muốn xóa tài khoản của mình không?'
-                  : 'Bạn có chắc chắn muốn xóa bài đăng này không?'}
-              </p>
+              {/* body */}
+              <div className="px-7 py-6">
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {deleteModal.type === 'account'
+                    ? 'Bạn có chắc chắn muốn xóa tài khoản của mình không?'
+                    : isNegotiating
+                    ? 'Bạn không thể xóa bài đăng này vì đang có người thương lượng. Hãy hoàn tất hoặc hủy giao dịch trước khi xóa.'
+                    : 'Bạn có chắc chắn muốn xóa bài đăng này không?'}
+                </p>
 
-              {deleteModal.type === 'listing' &&
-                deleteModal.listing && (
-                  <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-red-500 mb-1">
-                      Bài đăng sẽ bị xóa
+                {/* tên bài đăng */}
+                {(deleteModal.type === 'listing' || isNegotiating) && deleteModal.listing && (
+                  <div className={`mt-4 rounded-2xl border p-4 ${isNegotiating ? 'border-amber-200 bg-amber-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isNegotiating ? 'text-amber-600' : 'text-red-500'}`}>
+                      {isNegotiating ? 'Bài đăng không thể xóa' : 'Bài đăng sẽ bị xóa'}
                     </p>
-
-                    <p className="font-heading text-sm uppercase text-gray-900">
-                      {deleteModal.listing.item_name}
-                    </p>
+                    <p className="font-heading text-sm text-gray-900">{deleteModal.listing.item_name}</p>
                   </div>
                 )}
 
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-xs leading-relaxed text-amber-800">
-                  ⚠️ Dữ liệu sẽ bị xóa khỏi hệ thống và không thể khôi phục.
-                </p>
+                {/* cảnh báo — chỉ hiện khi không phải negotiating */}
+                {!isNegotiating && (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs leading-relaxed text-amber-800">
+                      Dữ liệu sẽ bị xóa khỏi hệ thống và không thể khôi phục.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* footer buttons */}
+              <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+                <button
+                  onClick={() => setDeleteModal({ open: false, type: null, listing: null })}
+                  className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  {isNegotiating ? 'Đã hiểu' : 'Hủy'}
+                </button>
+                {!isNegotiating && (
+                  <button
+                    onClick={confirmDelete}
+                    className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600"
+                  >
+                    {deleteModal.type === 'account' ? 'Xóa tài khoản' : 'Xóa bài đăng'}
+                  </button>
+                )}
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
-              <button
-                onClick={() =>
-                  setDeleteModal({
-                    open: false,
-                    type: null,
-                    listing: null,
-                  })
-                }
-                className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-              >
-                Hủy
-              </button>
-
-              <button
-                onClick={confirmDelete}
-                className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600"
-              >
-                {deleteModal.type === 'account'
-                  ? 'Xóa tài khoản'
-                  : 'Xóa bài đăng'}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </>
-    )}
+          </motion.div>
+        </>
+      )}
 
       <AnimatePresence>
-        {/* ✅ Ratings modal — opens when star rating text is clicked */}
         {showRatings && currentUser && (
           <RatingsModal userId={currentUser.id} onClose={() => setShowRatings(false)} />
         )}
