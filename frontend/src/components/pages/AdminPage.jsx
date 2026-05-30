@@ -416,7 +416,7 @@ function ReportCard({ report, onResolve, onPunish }) {
     <div className={`
       relative overflow-hidden rounded-2xl border shadow-soft transition-all duration-200
       ${resolved
-        ? 'border-teal-100 bg-white opacity-60'
+        ? 'border-teal-100 bg-white'
         : isHighRisk
           ? 'border-red-200 bg-red-50/30'
           : 'border-teal-100 bg-white hover:shadow-card'
