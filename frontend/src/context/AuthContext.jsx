@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading]     = useState(true)
 
-  // Khôi phục user từ localStorage, sau đó refresh từ server để lấy status mới nhất
+  // Khôi phục user từ localStorage, sau đó LUÔN verify từ server trước khi render
   useEffect(() => {
     const saved = localStorage.getItem(CURRENT_USER_KEY)
     if (!saved) { setIsLoading(false); return }
@@ -27,19 +27,24 @@ export function AuthProvider({ children }) {
     try { parsed = JSON.parse(saved) }
     catch { localStorage.removeItem(CURRENT_USER_KEY); setIsLoading(false); return }
 
-    // Hiển thị data cũ trước (tránh flash trắng)
-    setCurrentUser(parsed)
-
-    // Luôn gọi API để lấy status mới nhất (ban, unban, v.v.)
+    // Gọi API lấy status mới nhất — giữ isLoading=true cho đến khi xong
+    // để AccountPage không render trước khi biết user có bị ban không
     fetch(`${API_URL}/users/${parsed.id}`)
       .then(r => r.ok ? r.json() : null)
       .then(fresh => {
-        if (!fresh) return
-        const updated = { ...parsed, ...fresh }
-        setCurrentUser(updated)
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated))
+        if (fresh) {
+          const updated = { ...parsed, ...fresh }
+          setCurrentUser(updated)
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated))
+        } else {
+          // API lỗi → dùng data cũ
+          setCurrentUser(parsed)
+        }
       })
-      .catch(() => { /* giữ nguyên data cũ nếu offline */ })
+      .catch(() => {
+        // Offline → dùng data cũ
+        setCurrentUser(parsed)
+      })
       .finally(() => setIsLoading(false))
   }, [])
 
