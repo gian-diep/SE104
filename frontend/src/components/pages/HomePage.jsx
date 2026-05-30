@@ -486,18 +486,24 @@ export default function HomePage() {
       setSearchResults(null)
       return
     }
+
     const timer = setTimeout(async () => {
       setSearchLoading(true)
+
       try {
-        const data = await getListings({ keyword: searchQuery.trim() })
+        const data = await getListings({
+          search: searchQuery.trim()
+        })
+
         setSearchResults(data)
       } catch (err) {
-        console.error('Search failed:', err)
+        console.error('Listing search failed:', err)
         setSearchResults([])
       } finally {
         setSearchLoading(false)
       }
     }, 250)
+
     return () => clearTimeout(timer)
   }, [searchQuery])
 
