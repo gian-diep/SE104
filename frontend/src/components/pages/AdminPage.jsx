@@ -415,12 +415,12 @@ function RatingStars({ value }) {
 // ─── Report Status Pill ───────────────────────────────────────────────────────
 function ReportStatusPill({ resolved }) {
   return resolved ? (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-heading uppercase tracking-widest bg-green-500/10 text-green-600 border border-green-500/20">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-heading uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-200">
       <CheckCircle className="w-3 h-3" />
       Đã xử lý
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-heading uppercase tracking-widest bg-amber-500/10 text-amber-600 border border-amber-500/20">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-heading uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-200">
       <Clock className="w-3 h-3" />
       Chờ xử lý
     </span>
@@ -553,24 +553,6 @@ function ReportCard({ report, onResolve, onPunish }) {
               <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {report.detail}
               </p>
-            </div>
-          </div>
-        )}
- 
-        {/* Ảnh bằng chứng */}
-        {report.images && report.images.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[11px] font-heading uppercase tracking-widest text-muted-foreground mb-2">
-              Ảnh bằng chứng
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              {report.images.map((url, idx) => (
-                <a key={idx} href={url} target="_blank" rel="noreferrer"
-                  className="w-20 h-20 rounded-xl overflow-hidden border border-teal-100 flex-shrink-0 hover:opacity-80 transition-opacity"
-                >
-                  <img src={url} alt={`Bằng chứng ${idx + 1}`} className="w-full h-full object-cover" />
-                </a>
-              ))}
             </div>
           </div>
         )}
@@ -761,29 +743,13 @@ function ReportCard({ report, onResolve, onPunish }) {
 function ReportTab() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // 'all' | 'pending' | 'resolved'
-  
+  const [tab, setTab] = useState('pending') // 'pending' | 'resolved'
+
   const load = useCallback(async () => {
     setLoading(true)
- 
     try {
       const data = await getReports()
- 
-      setReports(
-        data.sort((a, b) => {
-          const ratingA = a.reported_user_rating ?? 0
-          const ratingB = b.reported_user_rating ?? 0
- 
-          if (ratingA !== ratingB) {
-            return ratingA - ratingB
-          }
- 
-          return (
-            new Date(b.created_at) -
-            new Date(a.created_at)
-          )
-        })
-      )
+      setReports(data)
     } catch (err) {
       console.error(err)
       setReports([])
@@ -791,102 +757,110 @@ function ReportTab() {
       setLoading(false)
     }
   }, [])
- 
-  useEffect(() => {
-    load()
-  }, [load])
- 
+
+  useEffect(() => { load() }, [load])
+
   const updateStatus = async (reportId) => {
     await resolveReport(reportId)
- 
-    setReports(prev =>
-      prev.map(r =>
-        r.id === reportId
-          ? { ...r, status: 'resolved' }
-          : r
-      )
-    )
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r))
   }
 
   const handlePunish = (reportId) => {
-    setReports(prev =>
-      prev.map(r =>
-        r.id === reportId ? { ...r, status: 'resolved' } : r
-      )
-    )
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r))
   }
- 
-  const pendingCount = reports.filter(r => r.status !== 'resolved').length
-  const resolvedCount = reports.filter(r => r.status === 'resolved').length
- 
-  const filtered = reports.filter(r => {
-    if (filter === 'pending') return r.status !== 'resolved'
-    if (filter === 'resolved') return r.status === 'resolved'
-    return true
-  })
- 
+
+  const pending = reports
+    .filter(r => r.status !== 'resolved')
+    .sort((a, b) => {
+      // Ưu tiên rating thấp lên trên
+      const rA = a.reported_user_rating ?? 0
+      const rB = b.reported_user_rating ?? 0
+      if (rA !== rB) return rA - rB
+      return new Date(b.created_at) - new Date(a.created_at)
+    })
+
+  const resolved = reports
+    .filter(r => r.status === 'resolved')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+  const displayed = tab === 'pending' ? pending : resolved
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
         <RefreshCw className="w-4 h-4 animate-spin" />
-        <span className="text-sm font-heading uppercase tracking-widest">
-          Đang tải...
-        </span>
+        <span className="text-sm font-heading uppercase tracking-widest">Đang tải...</span>
       </div>
     )
   }
- 
+
   return (
     <div>
-      {/* Summary bar */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <div className="flex items-center gap-4 text-xs font-heading uppercase tracking-widest text-muted-foreground">
-          <span>
-            <span className="text-foreground font-medium">{reports.length}</span> báo cáo
-          </span>
-          <span className="text-muted-foreground/30">|</span>
-          <span className="text-amber-600">
-            <span className="font-medium">{pendingCount}</span> chờ xử lý
-          </span>
-          <span className="text-muted-foreground/30">|</span>
-          <span className="text-green-600">
-            <span className="font-medium">{resolvedCount}</span> đã xử lý
-          </span>
+      {/* Tab bar */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex gap-1.5 p-1.5 bg-white rounded-2xl border border-teal-100 shadow-soft w-fit">
+          <button
+            onClick={() => setTab('pending')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading text-sm transition-all ${
+              tab === 'pending'
+                ? 'bg-amber-500 text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground hover:bg-surface'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            Chờ xử lý
+            {pending.length > 0 && (
+              <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                tab === 'pending' ? 'bg-white/25 text-white' : 'bg-amber-500 text-white'
+              }`}>
+                {pending.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setTab('resolved')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading text-sm transition-all ${
+              tab === 'resolved'
+                ? 'bg-emerald-500 text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground hover:bg-surface'
+            }`}
+          >
+            <CheckCircle className="w-4 h-4" />
+            Đã xử lý
+            {resolved.length > 0 && (
+              <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                tab === 'resolved' ? 'bg-white/25 text-white' : 'bg-emerald-500 text-white'
+              }`}>
+                {resolved.length}
+              </span>
+            )}
+          </button>
         </div>
- 
-        {/* Filter pills */}
-        <div className="flex items-center gap-1.5">
-          {[
-            { id: 'all', label: 'Tất cả' },
-            { id: 'pending', label: 'Chờ xử lý' },
-            { id: 'resolved', label: 'Đã xử lý' },
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-xl text-[11px] font-heading uppercase tracking-widest transition-all ${
-                filter === f.id
-                  ? 'bg-teal-gradient text-white shadow-btn'
-                  : 'bg-white border border-teal-100 text-muted-foreground hover:text-foreground shadow-soft'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+
+        <button onClick={load} className="p-2.5 rounded-xl border border-teal-100 bg-white text-muted-foreground hover:text-primary transition-colors shadow-soft" title="Làm mới">
+          <RefreshCw className="h-4 w-4" />
+        </button>
       </div>
- 
-      {/* Report list */}
-      {filtered.length === 0 ? (
+
+      {/* Hint cho tab pending */}
+      {tab === 'pending' && pending.length > 0 && (
+        <p className="text-xs font-paragraph text-muted-foreground mb-4 flex items-center gap-1.5">
+          <AlertTriangle className="w-3 h-3 text-amber-400" />
+          Sắp xếp theo rating thấp nhất — tài khoản nhiều vi phạm lên trên
+        </p>
+      )}
+
+      {/* List */}
+      {displayed.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground rounded-2xl border border-dashed border-teal-200 bg-white">
           <Flag className="w-8 h-8 opacity-20" />
           <p className="text-sm font-heading uppercase tracking-widest opacity-50">
-            Không có báo cáo nào
+            {tab === 'pending' ? 'Không có báo cáo nào chờ xử lý' : 'Chưa có báo cáo nào được xử lý'}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(report => (
+          {displayed.map(report => (
             <ReportCard
               key={report.id}
               report={report}
@@ -914,12 +888,6 @@ function UsersTab() {
     userId: null,
     userName: '',
   })
-  const [banModal, setBanModal] = useState({
-    open: false,
-    userId: null,
-    userName: '',
-    reason: '',
-  })
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -935,19 +903,14 @@ function UsersTab() {
     return !q || u.username?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.university?.toLowerCase().includes(q)
   })
 
-  const ban = (userId, userName) => {
-    setBanModal({ open: true, userId, userName, reason: '' })
-  }
-
-  const confirmBan = async () => {
-    if (!banModal.reason.trim()) return
-    setBusy(p => ({ ...p, [banModal.userId]: true }))
-    try {
-      await adminBanUser(banModal.userId, banModal.reason.trim())
-      await load()
-      setBanModal({ open: false, userId: null, userName: '', reason: '' })
-    } catch (e) { alert('Lỗi: ' + e.message) }
-    finally { setBusy(p => ({ ...p, [banModal.userId]: false })) }
+  const ban = async (userId) => {
+    const reason = prompt('Lý do ban (bắt buộc):')
+    if (reason === null) return          // Người dùng bấm Cancel
+    if (!reason.trim()) { alert('Vui lòng nhập lý do ban'); return }
+    setBusy(p => ({ ...p, [userId]: true }))
+    try { await adminBanUser(userId, reason.trim()); await load() }
+    catch (e) { alert('Lỗi: ' + e.message) }
+    finally { setBusy(p => ({ ...p, [userId]: false })) }
   }
 
   const unban = async (userId) => {
@@ -1039,7 +1002,7 @@ function UsersTab() {
                 <p className="font-paragraph text-xs text-muted-foreground">{user.university || '—'}</p>
               </div>
               <div className="col-span-6 md:col-span-2">
-                <Badge status={user.status === 'banned' ? 'banned' : 'user'} />
+                <Badge status={user.role === 'banned' ? 'banned' : 'user'} />
               </div>
               <div className="col-span-6 md:col-span-1">
                 <p className="font-paragraph text-xs text-muted-foreground">{user.listing_count ?? 0} bài</p>
@@ -1052,13 +1015,13 @@ function UsersTab() {
                 >
                   <UserCircle className="h-4 w-4" />
                 </button>
-                {user.status === 'banned' ? (
+                {user.role === 'banned' ? (
                   <button onClick={() => unban(user.id)} disabled={busy[user.id]}
                     title="Unban" className="p-2 text-muted-foreground hover:text-green-500 transition-colors disabled:opacity-50">
                     <CheckCircle className="h-4 w-4" />
                   </button>
                 ) : (
-                  <button onClick={() => ban(user.id, user.username)} disabled={busy[user.id]}
+                  <button onClick={() => ban(user.id)} disabled={busy[user.id]}
                     title="Ban" className="p-2 text-muted-foreground hover:text-orange-500 transition-colors disabled:opacity-50">
                     <Ban className="h-4 w-4" />
                   </button>
@@ -1168,59 +1131,6 @@ function UsersTab() {
         </div>
       )}
 
-      {/* ── Ban Modal ── */}
-      {banModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] animate-in zoom-in-95 duration-200">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-500" />
-            <div className="px-7 pt-8 pb-6">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-orange-100 shadow-sm">
-                <Ban className="h-8 w-8 text-orange-500" />
-              </div>
-              <h3 className="mt-5 font-heading text-2xl uppercase tracking-wide text-gray-900 text-center">
-                Cấm tài khoản
-              </h3>
-              <p className="mt-1 text-sm text-center text-gray-500">
-                <span className="font-semibold text-gray-700">{banModal.userName}</span>
-              </p>
-
-              <div className="mt-5 space-y-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  Lý do ban <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={banModal.reason}
-                  onChange={e => setBanModal(p => ({ ...p, reason: e.target.value }))}
-                  placeholder="Nhập lý do cấm tài khoản..."
-                  className="w-full rounded-xl border border-orange-100 bg-orange-50/30 font-paragraph text-sm px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-300/50 resize-none"
-                  autoFocus
-                />
-                {banModal.reason.trim() === '' && (
-                  <p className="font-paragraph text-xs text-red-400">Bắt buộc nhập lý do</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
-              <button
-                onClick={() => setBanModal({ open: false, userId: null, userName: '', reason: '' })}
-                className="flex-1 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={confirmBan}
-                disabled={!banModal.reason.trim() || busy[banModal.userId]}
-                className="flex-1 rounded-xl bg-orange-500 px-5 py-3 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {busy[banModal.userId] ? 'Đang xử lý...' : 'Xác nhận ban'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Admin User Detail Modal ── */}
       {selectedUser && (
         <>
@@ -1289,7 +1199,7 @@ function UsersTab() {
                 {/* Status */}
                 <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-teal-100 bg-surface">
                   <span className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trạng thái</span>
-                  <Badge status={selectedUser.status === 'banned' ? 'banned' : 'user'} />
+                  <Badge status={selectedUser.role === 'banned' ? 'banned' : 'user'} />
                 </div>
 
                 {/* Join date */}
@@ -1305,7 +1215,7 @@ function UsersTab() {
 
               {/* Actions */}
               <div className="px-6 pb-6 flex gap-3">
-                {selectedUser.status === 'banned' ? (
+                {selectedUser.role === 'banned' ? (
                   <button
                     onClick={async () => {
                       await unban(selectedUser.id)
@@ -1318,7 +1228,11 @@ function UsersTab() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => ban(selectedUser.id, selectedUser.username)}
+                    onClick={async () => {
+                      if (!confirm('Ban user này?')) return
+                      await ban(selectedUser.id)
+                      setSelectedUser(prev => prev ? { ...prev, role: 'banned' } : null)
+                    }}
                     disabled={busy[selectedUser.id]}
                     className="flex-1 h-11 rounded-xl bg-orange-500 text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-60"
                   >
@@ -1494,22 +1408,6 @@ function AppealTab({ onCountChange }) {
                   <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-1.5">Nội dung khiếu nại</p>
                   <p className="font-paragraph text-sm text-foreground leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
                 </div>
-
-                {/* Ảnh bằng chứng */}
-                {appeal.images && appeal.images.length > 0 && (
-                  <div>
-                    <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">Ảnh bằng chứng</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {appeal.images.map((url, idx) => (
-                        <a key={idx} href={url} target="_blank" rel="noreferrer"
-                          className="w-20 h-20 rounded-xl overflow-hidden border border-teal-100 flex-shrink-0 hover:opacity-80 transition-opacity"
-                        >
-                          <img src={url} alt={`Bằng chứng ${idx + 1}`} className="w-full h-full object-cover" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Admin note nếu đã xử lý */}
                 {appeal.admin_note && (
