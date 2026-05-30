@@ -492,7 +492,7 @@ export default function HomePage() {
 
       try {
         const data = await getListings({
-          search: searchQuery.trim()
+          keyword: searchQuery.trim()
         })
 
         setSearchResults(data)
