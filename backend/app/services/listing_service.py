@@ -7,7 +7,7 @@ Thay đổi: images là list[str] (image_id), không phải binary.
 from sqlalchemy.orm import Session
 from app.database.models import Listing
 from app.schemas.listing_schema import ListingCreate, ListingUpdate
-from sqlalchemy import or_, func, text
+from sqlalchemy import or_, func
 from app.database.models import User
 
 def create_listing(db: Session, seller_id: int, data: ListingCreate) -> Listing:
@@ -57,7 +57,6 @@ def get_listings(
         kw = keyword.strip()
         term = f"%{kw}%"
 
-        # unaccent ilike: tìm không dấu
         unaccent_match = or_(
             func.unaccent(Listing.item_name).ilike(func.unaccent(term)),
             func.unaccent(Listing.item_description).ilike(func.unaccent(term)),
@@ -65,8 +64,6 @@ def get_listings(
             func.unaccent(Listing.keywords).ilike(func.unaccent(term)),
         )
 
-        # trigram similarity: chịu được sai chính tả nhẹ (cần pg_trgm)
-        # similarity > 0.25 với từ khóa ngắn; tự động fallback nếu không có extension
         try:
             trigram_match = or_(
                 func.similarity(func.unaccent(Listing.item_name), func.unaccent(kw)) > 0.25,
@@ -83,11 +80,11 @@ def get_listings(
 
 
 def get_listing_by_id(db: Session, listing_id: int) -> Listing | None:
-    return db.query(Listing).filter(Listing.id == listing_id).first()
+    return db.query(Listing).filter(Listing.id == listing_id, Listing.status != "deleted").first()
 
 
 def get_listings_by_seller(db: Session, seller_id: int):
-    return db.query(Listing).filter(Listing.seller_id == seller_id).all()
+    return db.query(Listing).filter(Listing.seller_id == seller_id, Listing.status != "deleted").all()
 
 
 def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing | None:
@@ -112,7 +109,7 @@ def delete_listing(db: Session, listing_id: int) -> bool:
     listing = get_listing_by_id(db, listing_id)
     if not listing:
         return False
-    db.delete(listing)
+    listing.status = "deleted"
     db.commit()
     return True
 
