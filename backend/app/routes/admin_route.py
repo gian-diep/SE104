@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from app.database.database import get_db
-from app.database.models import User, Listing, ChatRequest, ChatSession, Message, Notification
+from app.database.models import User, Listing, ChatRequest, ChatSession, Message, Notification, Appeal
 from app.schemas.listing_schema import ListingOut
 from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -160,10 +160,17 @@ def update_user_status(
             title="🚫 Tài khoản của bạn đã bị khóa",
             body=f"Lý do: {reason or 'Vi phạm quy định'}. Bạn có thể gửi khiếu nại nếu cho rằng đây là nhầm lẫn.",
         ))
+
     elif action == "unban":
         user.status = "active"
         user.ban_reason = None
         user.ban_until  = None
+
+        # Xóa appeal cũ (nếu có) để lần ban sau user vẫn gửi được khiếu nại
+        old_appeal = db.query(Appeal).filter(Appeal.user_id == user_id).first()
+        if old_appeal:
+            db.delete(old_appeal)
+
     else:
         raise HTTPException(status_code=400, detail="action phải là 'ban' hoặc 'unban'")
 

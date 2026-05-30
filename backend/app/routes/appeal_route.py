@@ -45,8 +45,8 @@ def _appeal_out(a: Appeal, user: User) -> dict:
         "status":     a.status,
         "admin_note": a.admin_note,
         "created_at": a.created_at,
-        "ban_until":  user.ban_until  if user else None,   # ← thêm
-        "ban_reason": user.ban_reason if user else None, 
+        "ban_until":  user.ban_until  if user else None,
+        "ban_reason": user.ban_reason if user else None,
     }
 
 
@@ -64,7 +64,7 @@ def check_appeal(user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 def create_appeal(payload: AppealCreate, db: Session = Depends(get_db)):
-    """User gửi khiếu nại — mỗi user chỉ được 1 lần."""
+    """User gửi khiếu nại — mỗi lần bị ban chỉ được gửi 1 lần."""
     if db.query(Appeal).filter(Appeal.user_id == payload.user_id).first():
         raise HTTPException(status_code=400, detail="Bạn đã gửi khiếu nại rồi.")
 
@@ -103,8 +103,9 @@ def review_appeal(
 ):
     """
     Admin duyệt khiếu nại.
-    - approve → unban user (status = 'active'), xóa ban_reason
-    - reject  → giữ nguyên
+    - approve → unban user (status = 'active'), xóa ban_reason, xóa appeal row
+                để lần ban sau user vẫn có thể gửi khiếu nại lại
+    - reject  → giữ nguyên appeal row (user không gửi lại được trong lần ban này)
     """
     appeal = db.query(Appeal).filter(Appeal.id == appeal_id).first()
     if not appeal:
@@ -113,13 +114,12 @@ def review_appeal(
         raise HTTPException(status_code=400, detail="Khiếu nại đã được xử lý.")
 
     if payload.action == "approve":
-        appeal.status = "approved"
-        # Tự động unban
         user = db.query(User).filter(User.id == appeal.user_id).first()
         if user and user.status == "banned":
             user.status = "active"
             user.ban_reason = None
             user.ban_until  = None
+
         # Thông báo cho người dùng
         db.add(Notification(
             user_id=appeal.user_id,
@@ -127,8 +127,23 @@ def review_appeal(
             title="✅ Khiếu nại của bạn được chấp thuận",
             body=f"Tài khoản đã được mở khóa.{' ' + payload.note if payload.note else ''}",
         ))
+
+        # Commit user + notification trước, rồi xóa appeal
+        # để lần ban sau user có thể gửi khiếu nại lại
+        db.commit()
+        db.delete(appeal)
+        db.commit()
+
+        user = db.query(User).filter(User.id == appeal.user_id).first() if user else None
+        return {
+            "message": "Đã chấp thuận khiếu nại và mở khóa tài khoản.",
+            "status": "approved",
+        }
+
     elif payload.action == "reject":
         appeal.status = "rejected"
+        appeal.admin_note = payload.note or None
+
         # Thông báo cho người dùng
         db.add(Notification(
             user_id=appeal.user_id,
@@ -136,12 +151,12 @@ def review_appeal(
             title="❌ Khiếu nại của bạn bị từ chối",
             body=f"Tài khoản vẫn bị khóa.{' Lý do: ' + payload.note if payload.note else ''}",
         ))
+
+        db.commit()
+        db.refresh(appeal)
+
+        user = db.query(User).filter(User.id == appeal.user_id).first()
+        return _appeal_out(appeal, user)
+
     else:
         raise HTTPException(status_code=400, detail="action phải là 'approve' hoặc 'reject'.")
-
-    appeal.admin_note = payload.note or None
-    db.commit()
-    db.refresh(appeal)
-
-    user = db.query(User).filter(User.id == appeal.user_id).first()
-    return _appeal_out(appeal, user)
