@@ -557,6 +557,24 @@ function ReportCard({ report, onResolve, onPunish }) {
           </div>
         )}
  
+        {/* Ảnh bằng chứng */}
+        {report.images && report.images.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[11px] font-heading uppercase tracking-widest text-muted-foreground mb-2">
+              Ảnh bằng chứng
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {report.images.map((url, idx) => (
+                <a key={idx} href={url} target="_blank" rel="noreferrer"
+                  className="w-20 h-20 rounded-xl overflow-hidden border border-teal-100 flex-shrink-0 hover:opacity-80 transition-opacity"
+                >
+                  <img src={url} alt={`Bằng chứng ${idx + 1}`} className="w-full h-full object-cover" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+ 
         {/* Admin note nếu có */}
         {report.admin_note && (
           <div className="mb-4 px-3 py-2 rounded-xl border border-blue-100 bg-blue-50/50">
