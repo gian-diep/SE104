@@ -557,22 +557,6 @@ function ReportCard({ report, onResolve, onPunish }) {
           </div>
         )}
  
-        {/* Ảnh minh chứng */}
-        {report.images?.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[11px] font-heading uppercase tracking-widest text-muted-foreground mb-2">
-              Ảnh minh chứng
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              {report.images.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer">
-                  <img src={url} alt={`minh chứng ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border border-teal-100 hover:opacity-80 transition-opacity cursor-zoom-in" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Admin note nếu có */}
         {report.admin_note && (
           <div className="mb-4 px-3 py-2 rounded-xl border border-blue-100 bg-blue-50/50">
@@ -912,6 +896,12 @@ function UsersTab() {
     userId: null,
     userName: '',
   })
+  const [banModal, setBanModal] = useState({
+    open: false,
+    userId: null,
+    userName: '',
+    reason: '',
+  })
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -927,14 +917,19 @@ function UsersTab() {
     return !q || u.username?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.university?.toLowerCase().includes(q)
   })
 
-  const ban = async (userId) => {
-    const reason = prompt('Lý do ban (bắt buộc):')
-    if (reason === null) return          // Người dùng bấm Cancel
-    if (!reason.trim()) { alert('Vui lòng nhập lý do ban'); return }
-    setBusy(p => ({ ...p, [userId]: true }))
-    try { await adminBanUser(userId, reason.trim()); await load() }
-    catch (e) { alert('Lỗi: ' + e.message) }
-    finally { setBusy(p => ({ ...p, [userId]: false })) }
+  const ban = (userId, userName) => {
+    setBanModal({ open: true, userId, userName, reason: '' })
+  }
+
+  const confirmBan = async () => {
+    if (!banModal.reason.trim()) return
+    setBusy(p => ({ ...p, [banModal.userId]: true }))
+    try {
+      await adminBanUser(banModal.userId, banModal.reason.trim())
+      await load()
+      setBanModal({ open: false, userId: null, userName: '', reason: '' })
+    } catch (e) { alert('Lỗi: ' + e.message) }
+    finally { setBusy(p => ({ ...p, [banModal.userId]: false })) }
   }
 
   const unban = async (userId) => {
@@ -1045,7 +1040,7 @@ function UsersTab() {
                     <CheckCircle className="h-4 w-4" />
                   </button>
                 ) : (
-                  <button onClick={() => ban(user.id)} disabled={busy[user.id]}
+                  <button onClick={() => ban(user.id, user.username)} disabled={busy[user.id]}
                     title="Ban" className="p-2 text-muted-foreground hover:text-orange-500 transition-colors disabled:opacity-50">
                     <Ban className="h-4 w-4" />
                   </button>
@@ -1155,6 +1150,59 @@ function UsersTab() {
         </div>
       )}
 
+      {/* ── Ban Modal ── */}
+      {banModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] animate-in zoom-in-95 duration-200">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-500" />
+            <div className="px-7 pt-8 pb-6">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-orange-100 shadow-sm">
+                <Ban className="h-8 w-8 text-orange-500" />
+              </div>
+              <h3 className="mt-5 font-heading text-2xl uppercase tracking-wide text-gray-900 text-center">
+                Cấm tài khoản
+              </h3>
+              <p className="mt-1 text-sm text-center text-gray-500">
+                <span className="font-semibold text-gray-700">{banModal.userName}</span>
+              </p>
+
+              <div className="mt-5 space-y-1.5">
+                <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Lý do ban <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={banModal.reason}
+                  onChange={e => setBanModal(p => ({ ...p, reason: e.target.value }))}
+                  placeholder="Nhập lý do cấm tài khoản..."
+                  className="w-full rounded-xl border border-orange-100 bg-orange-50/30 font-paragraph text-sm px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-300/50 resize-none"
+                  autoFocus
+                />
+                {banModal.reason.trim() === '' && (
+                  <p className="font-paragraph text-xs text-red-400">Bắt buộc nhập lý do</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+              <button
+                onClick={() => setBanModal({ open: false, userId: null, userName: '', reason: '' })}
+                className="flex-1 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmBan}
+                disabled={!banModal.reason.trim() || busy[banModal.userId]}
+                className="flex-1 rounded-xl bg-orange-500 px-5 py-3 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy[banModal.userId] ? 'Đang xử lý...' : 'Xác nhận ban'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Admin User Detail Modal ── */}
       {selectedUser && (
         <>
@@ -1252,11 +1300,7 @@ function UsersTab() {
                   </button>
                 ) : (
                   <button
-                    onClick={async () => {
-                      if (!confirm('Ban user này?')) return
-                      await ban(selectedUser.id)
-                      setSelectedUser(prev => prev ? { ...prev, status: 'banned' } : null)
-                    }}
+                    onClick={() => ban(selectedUser.id, selectedUser.username)}
                     disabled={busy[selectedUser.id]}
                     className="flex-1 h-11 rounded-xl bg-orange-500 text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-60"
                   >
@@ -1432,20 +1476,6 @@ function AppealTab({ onCountChange }) {
                   <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-1.5">Nội dung khiếu nại</p>
                   <p className="font-paragraph text-sm text-foreground leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
                 </div>
-
-                {/* Ảnh minh chứng */}
-                {appeal.images?.length > 0 && (
-                  <div>
-                    <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-1.5">Ảnh minh chứng</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {appeal.images.map((url, i) => (
-                        <a key={i} href={url} target="_blank" rel="noreferrer">
-                          <img src={url} alt={`minh chứng ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border border-teal-100 hover:opacity-80 transition-opacity cursor-zoom-in" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Admin note nếu đã xử lý */}
                 {appeal.admin_note && (
