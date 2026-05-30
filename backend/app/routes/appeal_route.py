@@ -45,6 +45,8 @@ def _appeal_out(a: Appeal, user: User) -> dict:
         "status":     a.status,
         "admin_note": a.admin_note,
         "created_at": a.created_at,
+        "ban_until":  user.ban_until  if user else None,   # ← thêm
+        "ban_reason": user.ban_reason if user else None, 
     }
 
 
