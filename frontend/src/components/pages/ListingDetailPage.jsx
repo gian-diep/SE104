@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Tag, BookOpen, FileText,
   MessageSquarePlus, School, Lock, Flag, X as XIcon, ChevronDown, Star, User,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ImagePlus, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
@@ -66,6 +66,24 @@ export default function ListingDetailPage() {
   const [reportDetail, setReportDetail] = useState('')
   const [reportDone, setReportDone]     = useState(false)
   const [reportError, setReportError]   = useState('')
+  const [reportImages, setReportImages]     = useState([])   // { file, preview }
+  const [reportUploading, setReportUploading] = useState(false)
+
+  const handleAddReportImages = (e) => {
+    const files = Array.from(e.target.files || [])
+    const remaining = 3 - reportImages.length
+    if (remaining <= 0) return
+    const toAdd = files.slice(0, remaining).map(f => ({ file: f, preview: URL.createObjectURL(f) }))
+    setReportImages(prev => [...prev, ...toAdd])
+    e.target.value = ''
+  }
+
+  const removeReportImage = (idx) => {
+    setReportImages(prev => {
+      URL.revokeObjectURL(prev[idx].preview)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
 
   useEffect(() => {
     async function load() {
@@ -119,6 +137,18 @@ export default function ListingDetailPage() {
     if (!reportReason) { setReportError('Vui lòng chọn lý do'); return }
     if (!reportDetail.trim()) { setReportError('Vui lòng nhập nội dung chi tiết'); return }
     try {
+      setReportUploading(true)
+      let imageUrls = []
+      for (const img of reportImages) {
+        const fd = new FormData()
+        fd.append('file', img.file)
+        const res = await fetch(`${API_URL}/images/upload`, { method: 'POST', body: fd })
+        if (res.ok) {
+          const data = await res.json()
+          imageUrls.push(data.url || data.image_id)
+        }
+      }
+      setReportUploading(false)
       await createReport({
         reporter_id: currentUser.id,
         reported_user_id: listing.seller_id,
@@ -126,9 +156,11 @@ export default function ListingDetailPage() {
         listing_id: listing.id,
         reason: reportReason,
         detail: reportDetail,
+        images: imageUrls,
       })
       setReportDone(true)
     } catch (err) {
+      setReportUploading(false)
       setReportError(err.message)
     }
   }
@@ -459,9 +491,33 @@ export default function ListingDetailPage() {
                       className="w-full border border-teal-100 bg-surface font-paragraph text-sm px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-xl"
                     />
                   </div>
+                  <div>
+                    <label className="font-heading text-xs uppercase tracking-widest text-muted-foreground block mb-2">
+                      Ảnh minh chứng <span className="normal-case font-paragraph font-normal text-muted-foreground/60">(tuỳ chọn, tối đa 3)</span>
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {reportImages.map((img, idx) => (
+                        <div key={idx} className="relative w-[72px] h-[72px] rounded-xl overflow-hidden border border-teal-100 flex-shrink-0">
+                          <img src={img.preview} alt="minh chứng" className="w-full h-full object-cover" />
+                          <button onClick={() => removeReportImage(idx)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center transition-colors">
+                            <Trash2 className="w-3 h-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                      {reportImages.length < 3 && (
+                        <label className="w-[72px] h-[72px] rounded-xl border-2 border-dashed border-teal-200 hover:border-primary cursor-pointer flex flex-col items-center justify-center gap-1 transition-colors bg-teal-50/50 hover:bg-teal-50 flex-shrink-0">
+                          <ImagePlus className="w-5 h-5 text-teal-400" />
+                          <span className="font-paragraph text-[10px] text-teal-400">Thêm ảnh</span>
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={handleAddReportImages} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
                   {reportError && <p className="font-paragraph text-sm text-red-500">{reportError}</p>}
                   <div className="flex gap-3">
-                    <button onClick={handleReport} className="flex-1 h-11 rounded-xl bg-red-500 hover:bg-red-600 text-white font-heading font-semibold text-sm transition-colors shadow-btn">Gửi báo cáo</button>
+                    <button onClick={handleReport} disabled={reportUploading} className="flex-1 h-11 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white font-heading font-semibold text-sm transition-colors shadow-btn">
+                      {reportUploading ? 'Đang tải ảnh...' : 'Gửi báo cáo'}
+                    </button>
                     <button onClick={() => setShowReport(false)} className="px-5 h-11 rounded-xl border border-teal-100 font-heading font-semibold text-sm text-foreground hover:border-primary hover:text-primary transition-colors">Hủy</button>
                   </div>
                 </div>
