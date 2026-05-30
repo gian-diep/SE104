@@ -564,7 +564,7 @@ function EditPanel({ listing, onClose, onSaved }) {
           <div className="flex items-start gap-2 px-6 py-3 bg-amber-50 border-b border-amber-200 flex-shrink-0">
             <Info className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="font-paragraph text-xs text-amber-700">
-              Sau khi lưu, bài đăng sẽ chuyển về <strong>Chờ duyệt</strong> cho đến khi Admin duyệt lại.
+              Vui lòng không chỉnh sửa thành những nội dung không phù hợp với tiêu chuẩn cộng đồng.
             </p>
           </div>
         )}
