@@ -150,6 +150,7 @@ def get_user_ratings(user_id: int, db: Session = Depends(get_db)):
             "id": r.id,
             "stars": r.stars,
             "comment": r.comment,
+            "rated_role": r.rated_role,        # ← thêm dòng này
 
             "rater_id": r.rater_id,
             "rater_name": rater.username if rater else "Ẩn danh",
