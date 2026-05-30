@@ -39,6 +39,8 @@ def get_users(
             "rating": user.rating,
             "rating_count": user.rating_count,
             "role": user.role,
+            "status": user.status,
+            "ban_until": user.ban_until,
         }
         for user in users
     ]
@@ -59,6 +61,8 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         "rating": user.rating,
         "rating_count": user.rating_count,
         "role": user.role,
+        "status": user.status,
+        "ban_until": user.ban_until,
     }
 
 
