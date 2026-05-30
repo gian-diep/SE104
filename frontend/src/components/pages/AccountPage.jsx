@@ -9,12 +9,14 @@ import { uploadAvatar, getUserRatings } from '@/lib/Userapi.js'
 import { checkContent } from '@/lib/contentFilter.js'
 import { loginApi } from '@/lib/Authapi.js'
 import { getListingsBySeller, updateListing, deleteListing as deleteListingApi, updateTransactionStatus } from '@/lib/Listingapi.js'
+import { uploadImage } from '@/lib/Imageapi.js'
+import { checkAppeal, createAppeal } from '@/lib/Appealapi.js'
 import { API_URL } from '@/lib/Api.js'
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertCircle,
   Pencil, X, Upload, Save, Info, BookOpen, ClipboardList,
   Tag, Banknote, Star, User, RefreshCw, MessageCircle, PlusCircle,
-  Send, RotateCcw, Ban,
+  Send, RotateCcw, Ban, ShieldX, AlertTriangle,
 } from 'lucide-react'
 
 const CATEGORIES  = ['Tài liệu photo', 'Tài liệu online', 'Tài liệu viết tay', 'Giáo trình', 'Sách']
@@ -203,6 +205,208 @@ function avatarColor(name = '') {
 }
 function getInitials(name = '') {
   return name.trim().split(/\s+/).slice(-2).map(w => w[0]?.toUpperCase() || '').join('')
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BANNED SCREEN — hiển thị khi user bị khóa tài khoản
+// ══════════════════════════════════════════════════════════════════════════════
+function BannedScreen({ user }) {
+  const [appeal,        setAppeal]        = useState(null)
+  const [loadingAppeal, setLoadingAppeal] = useState(true)
+  const [reason,        setReason]        = useState('')
+  const [imageFiles,    setImageFiles]    = useState([])   // { preview }
+  const [imageUrls,     setImageUrls]     = useState([])   // URLs sau upload
+  const [uploading,     setUploading]     = useState(false)
+  const [submitting,    setSubmitting]    = useState(false)
+  const [error,         setError]         = useState('')
+
+  useEffect(() => {
+    checkAppeal(user.id)
+      .then(res => setAppeal(res.submitted ? res.appeal : null))
+      .catch(() => setAppeal(null))
+      .finally(() => setLoadingAppeal(false))
+  }, [user.id])
+
+  const handleImageChange = async (e) => {
+    const files = Array.from(e.target.files)
+    const remaining = 3 - imageUrls.length
+    if (remaining <= 0) return
+    const toUpload = files.slice(0, remaining)
+    setUploading(true); setError('')
+    try {
+      const results = await Promise.all(toUpload.map(f => uploadImage(f)))
+      setImageUrls(prev => [...prev, ...results.map(r => r.url)].slice(0, 3))
+      setImageFiles(prev => [...prev, ...toUpload.map(f => ({ preview: URL.createObjectURL(f) }))].slice(0, 3))
+    } catch {
+      setError('Upload ảnh thất bại, vui lòng thử lại.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeImage = (idx) => {
+    setImageUrls(prev => prev.filter((_, i) => i !== idx))
+    setImageFiles(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) { setError('Vui lòng nhập nội dung khiếu nại.'); return }
+    setSubmitting(true); setError('')
+    try {
+      const res = await createAppeal({ user_id: user.id, reason: reason.trim(), images: imageUrls })
+      setAppeal(res)
+    } catch (e) {
+      setError(e.message || 'Không thể gửi khiếu nại.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const statusStyles = {
+    pending:  { cls: 'bg-amber-50 text-amber-700 border-amber-200',      label: 'Đang chờ xét duyệt' },
+    approved: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Đã chấp thuận'      },
+    rejected: { cls: 'bg-red-50 text-red-700 border-red-200',             label: 'Đã từ chối'          },
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-lg">
+        <div className="bg-white rounded-3xl border border-red-100 shadow-card overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-red-400 via-rose-500 to-red-500" />
+
+          {/* Header */}
+          <div className="px-8 pt-8 pb-6 border-b border-red-50 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <ShieldX className="w-8 h-8 text-red-500" />
+            </div>
+            <h1 className="font-heading text-2xl uppercase tracking-wide text-gray-900 mb-2">
+              Tài khoản bị khóa
+            </h1>
+            {user.ban_until ? (
+              <p className="text-sm text-muted-foreground">
+                Khóa đến{' '}
+                <span className="font-semibold text-red-600">
+                  {new Date(user.ban_until).toLocaleDateString('vi-VN')}
+                </span>
+              </p>
+            ) : (
+              <p className="text-sm font-semibold text-red-600">Khóa vĩnh viễn</p>
+            )}
+          </div>
+
+          <div className="px-8 py-6 space-y-5">
+            {/* Lý do ban */}
+            {user.ban_reason && (
+              <div className="rounded-xl border border-red-100 bg-red-50/60 px-4 py-3">
+                <p className="text-[11px] font-heading uppercase tracking-widest text-red-500 mb-1">Lý do bị khóa</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{user.ban_reason}</p>
+              </div>
+            )}
+
+            <div className="border-t border-gray-100" />
+
+            {loadingAppeal ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : appeal ? (
+              /* Đã gửi — hiển thị trạng thái */
+              <div className="space-y-3">
+                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground">Khiếu nại của bạn</p>
+                <div className="rounded-xl border border-teal-100 bg-teal-50/40 px-4 py-3 space-y-2">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
+
+                  {appeal.images?.length > 0 && (
+                    <div className="flex gap-2 flex-wrap pt-1">
+                      {appeal.images.map((url, i) => (
+                        <img key={i} src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-teal-100" />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className={`text-[11px] font-heading uppercase px-2.5 py-1 rounded-full border ${statusStyles[appeal.status]?.cls}`}>
+                      {statusStyles[appeal.status]?.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(appeal.created_at).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+
+                  {appeal.admin_note && (
+                    <div className="mt-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100">
+                      <p className="text-[11px] font-heading uppercase tracking-widest text-blue-600 mb-1">Phản hồi từ Admin</p>
+                      <p className="text-xs text-blue-800">{appeal.admin_note}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Chưa gửi — form khiếu nại */
+              <div className="space-y-4">
+                <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground">Gửi khiếu nại</p>
+                <textarea
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  placeholder="Trình bày lý do bạn cho rằng tài khoản bị khóa không đúng..."
+                  rows={4}
+                  className="w-full rounded-xl border border-teal-100 bg-surface px-4 py-3 text-sm font-paragraph resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
+                />
+
+                {/* Upload ảnh */}
+                <div>
+                  <p className="text-xs font-heading uppercase tracking-widest text-muted-foreground mb-2">
+                    Đính kèm ảnh bằng chứng{' '}
+                    <span className="normal-case text-muted-foreground/60">(tùy chọn, tối đa 3)</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {imageFiles.map((img, i) => (
+                      <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-teal-100 shadow-soft">
+                        <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeImage(i)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70 transition-colors"
+                        >×</button>
+                      </div>
+                    ))}
+                    {imageUrls.length < 3 && (
+                      <label className={`w-20 h-20 rounded-xl border-2 border-dashed border-teal-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-teal-50/50 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <Upload className="w-5 h-5 text-muted-foreground mb-1" />
+                        <span className="text-[10px] text-muted-foreground">{uploading ? 'Đang tải...' : 'Thêm ảnh'}</span>
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} disabled={uploading} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                    <p className="text-xs text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || uploading}
+                  className="w-full py-3 rounded-xl bg-teal-gradient text-white font-heading text-sm uppercase tracking-widest shadow-btn hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Đang gửi...' : 'Gửi khiếu nại'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <p className="text-center mt-6">
+          <Link to="/" className="text-xs font-heading uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+            ← Về trang chủ
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
 }
 
 function ModerationBadge({ status }) {
@@ -862,6 +1066,9 @@ const handleDeleteListing = (listing) => {
   }
 
   if (!currentUser) { navigate('/', { replace: true }); return null }
+
+  // Nếu bị ban → hiển thị màn hình khóa + form khiếu nại
+  if (currentUser.status === 'banned') return <BannedScreen user={currentUser} />
 
   return (
     <div className="min-h-screen bg-background text-foreground">
