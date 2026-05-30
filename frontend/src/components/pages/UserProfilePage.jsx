@@ -201,7 +201,13 @@ function RatingsModal({ userId, onClose }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="font-heading text-sm font-bold text-foreground truncate">{r.rater_name}</span>
+                        <Link
+                          to={`/nguoi-dung/${r.rater_id}`}
+                          onClick={onClose}
+                          className="font-heading text-sm font-bold text-foreground truncate hover:text-primary hover:underline"
+                        >
+                          {r.rater_name}
+                        </Link>
                         <span className="font-paragraph text-xs text-muted-foreground flex-shrink-0">{new Date(r.created_at).toLocaleDateString('vi-VN')}</span>
                       </div>
                       {r.rated_role && (
