@@ -187,7 +187,7 @@ def punish_user_from_report(
     db.add(Notification(
         user_id=report.reporter_id,
         type="report_resolved",
-        title="✅ Báo cáo của bạn đã được xử lý",
+        title="Báo cáo của bạn đã được xử lý",
         body="Admin đã xem xét báo cáo và thực hiện biện pháp xử lý.",
         ref_id=report_id,
     ))
