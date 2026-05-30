@@ -11,10 +11,10 @@ Các endpoint dành riêng cho admin:
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.database.database import get_db
-from app.database.models import User, Listing, ChatSession, Message
+from app.database.models import User, Listing, ChatSession, Message, Notification
 from app.schemas.listing_schema import ListingOut
 from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -127,9 +127,18 @@ def update_user_status(
     if action == "ban":
         user.status = "banned"
         user.ban_reason = reason or None
+        user.ban_until  = None  # ban vĩnh viễn từ tab Users
+        # Gửi thông báo cho người bị ban
+        db.add(Notification(
+            user_id=user.id,
+            type="ban_permanent",
+            title="🚫 Tài khoản của bạn đã bị khóa",
+            body=f"Lý do: {reason or 'Vi phạm quy định'}. Bạn có thể gửi khiếu nại nếu cho rằng đây là nhầm lẫn.",
+        ))
     elif action == "unban":
         user.status = "active"
         user.ban_reason = None
+        user.ban_until  = None
     else:
         raise HTTPException(status_code=400, detail="action phải là 'ban' hoặc 'unban'")
 

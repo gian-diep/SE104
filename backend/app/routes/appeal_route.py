@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from app.database.database import get_db
-from app.database.models import Appeal, User
+from app.database.models import Appeal, User, Notification
 
 router = APIRouter(prefix="/appeals", tags=["appeals"])
 
@@ -117,8 +117,23 @@ def review_appeal(
         if user and user.status == "banned":
             user.status = "active"
             user.ban_reason = None
+            user.ban_until  = None
+        # Thông báo cho người dùng
+        db.add(Notification(
+            user_id=appeal.user_id,
+            type="appeal_approved",
+            title="✅ Khiếu nại của bạn được chấp thuận",
+            body=f"Tài khoản đã được mở khóa.{' ' + payload.note if payload.note else ''}",
+        ))
     elif payload.action == "reject":
         appeal.status = "rejected"
+        # Thông báo cho người dùng
+        db.add(Notification(
+            user_id=appeal.user_id,
+            type="appeal_rejected",
+            title="❌ Khiếu nại của bạn bị từ chối",
+            body=f"Tài khoản vẫn bị khóa.{' Lý do: ' + payload.note if payload.note else ''}",
+        ))
     else:
         raise HTTPException(status_code=400, detail="action phải là 'approve' hoặc 'reject'.")
 
