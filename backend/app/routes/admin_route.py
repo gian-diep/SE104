@@ -97,6 +97,9 @@ def get_all_users(
             "email":         u.email,
             "university":    u.university,
             "role":          u.role,
+            "status":        u.status,        # ← thêm
+            "ban_until":     u.ban_until,     # ← thêm
+            "ban_reason":    u.ban_reason,    # ← thêm
             "avatar_url":    u.avatar_url,
             "rating":        u.rating,
             "rating_count":  u.rating_count,
