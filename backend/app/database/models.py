@@ -199,6 +199,7 @@ class Rating(Base):
                         nullable=False)
     stars      = Column(Integer, nullable=False)
     comment    = Column(NVARCHAR(500),    nullable=True)
+    rated_role = Column(String(10),       nullable=True)   # "seller" | "buyer"
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     session = relationship("ChatSession", back_populates="ratings")
