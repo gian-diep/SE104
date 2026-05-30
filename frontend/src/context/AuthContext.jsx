@@ -18,14 +18,29 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading]     = useState(true)
 
-  // Khôi phục user từ localStorage khi reload trang
+  // Khôi phục user từ localStorage, sau đó refresh từ server để lấy status mới nhất
   useEffect(() => {
     const saved = localStorage.getItem(CURRENT_USER_KEY)
-    if (saved) {
-      try { setCurrentUser(JSON.parse(saved)) }
-      catch { localStorage.removeItem(CURRENT_USER_KEY) }
-    }
-    setIsLoading(false)
+    if (!saved) { setIsLoading(false); return }
+
+    let parsed = null
+    try { parsed = JSON.parse(saved) }
+    catch { localStorage.removeItem(CURRENT_USER_KEY); setIsLoading(false); return }
+
+    // Hiển thị data cũ trước (tránh flash trắng)
+    setCurrentUser(parsed)
+
+    // Luôn gọi API để lấy status mới nhất (ban, unban, v.v.)
+    fetch(`${API_URL}/users/${parsed.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(fresh => {
+        if (!fresh) return
+        const updated = { ...parsed, ...fresh }
+        setCurrentUser(updated)
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated))
+      })
+      .catch(() => { /* giữ nguyên data cũ nếu offline */ })
+      .finally(() => setIsLoading(false))
   }, [])
 
   // ── Auth ──────────────────────────────────────────────────────────────────
