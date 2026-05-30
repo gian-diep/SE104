@@ -1495,6 +1495,22 @@ function AppealTab({ onCountChange }) {
                   <p className="font-paragraph text-sm text-foreground leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
                 </div>
 
+                {/* Ảnh bằng chứng */}
+                {appeal.images && appeal.images.length > 0 && (
+                  <div>
+                    <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">Ảnh bằng chứng</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {appeal.images.map((url, idx) => (
+                        <a key={idx} href={url} target="_blank" rel="noreferrer"
+                          className="w-20 h-20 rounded-xl overflow-hidden border border-teal-100 flex-shrink-0 hover:opacity-80 transition-opacity"
+                        >
+                          <img src={url} alt={`Bằng chứng ${idx + 1}`} className="w-full h-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Admin note nếu đã xử lý */}
                 {appeal.admin_note && (
                   <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
