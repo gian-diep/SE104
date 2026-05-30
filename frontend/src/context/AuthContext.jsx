@@ -51,16 +51,33 @@ export function AuthProvider({ children }) {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   const login = async (email, password) => {
-  const data = await loginApi({email,password,})
+  const data = await loginApi({
+    email,
+    password,
+  })
 
   const userRes = await fetch(
-  `${API_URL}/users/${data.id}`)
+    `${API_URL}/users/${data.id}`
+  )
 
   const fullUser = await userRes.json()
 
+  // 🚫 Nếu account bị ban → không login
+  if (fullUser.status === 'banned') {
+    throw new Error(
+      fullUser.ban_until
+        ? `Tài khoản của bạn bị khóa đến ${fullUser.ban_until}`
+        : 'Tài khoản của bạn đã bị khóa vĩnh viễn'
+    )
+  }
+
+  // ✅ Login bình thường
   setCurrentUser(fullUser)
 
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(fullUser))
+  localStorage.setItem(
+    CURRENT_USER_KEY,
+    JSON.stringify(fullUser)
+  )
 
   return fullUser
 }
