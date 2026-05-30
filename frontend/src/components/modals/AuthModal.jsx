@@ -103,7 +103,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/auth/ban-info?email=${encodeURIComponent(email)}`)
       if (res.ok) {
         const data = await res.json()
-        setBanInfo(prev => ({ ...prev, userId: data.user_id }))
+        setBanInfo(prev => ({ ...prev, userId: data.user_id, banReason: data.ban_reason || null }))
 
         // Kiểm tra đã từng khiếu nại chưa
         const appealCheck = await checkAppeal(data.user_id)
@@ -194,6 +194,11 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
             ? <>Tài khoản của bạn bị tạm khóa đến <span className="font-semibold text-foreground">{banInfo.banUntil}</span>.</>
             : 'Tài khoản của bạn đã bị khóa vĩnh viễn.'}
         </p>
+        {banInfo?.banReason && (
+          <div className="mt-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-paragraph text-left w-full">
+            <span className="font-semibold">Lý do: </span>{banInfo.banReason}
+          </div>
+        )}
       </div>
 
       {/* Trạng thái khiếu nại */}

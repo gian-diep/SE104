@@ -64,8 +64,8 @@ export async function adminGetUsers(params = {}) {
 /**
  * Ban user
  */
-export async function adminBanUser(userId) {
-  return apiFetch(`/admin/users/${userId}/status?action=ban`, { method: "PUT" })
+export async function adminBanUser(userId, reason = "") {
+  return apiFetch(`/admin/users/${userId}/status?action=ban${reason ? `&reason=${encodeURIComponent(reason)}` : ''}`, { method: "PUT" })
 }
 
 /**

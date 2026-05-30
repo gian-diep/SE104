@@ -912,9 +912,11 @@ function UsersTab() {
   })
 
   const ban = async (userId) => {
-    if (!confirm('Ban user này?')) return
+    const reason = prompt('Lý do ban (bắt buộc):')
+    if (reason === null) return          // Người dùng bấm Cancel
+    if (!reason.trim()) { alert('Vui lòng nhập lý do ban'); return }
     setBusy(p => ({ ...p, [userId]: true }))
-    try { await adminBanUser(userId); await load() }
+    try { await adminBanUser(userId, reason.trim()); await load() }
     catch (e) { alert('Lỗi: ' + e.message) }
     finally { setBusy(p => ({ ...p, [userId]: false })) }
   }

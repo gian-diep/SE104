@@ -3,8 +3,8 @@
 const BAD_WORDS = [
   // Tục tĩu / nhạy cảm (tiếng Việt)
   'đéo', 'địt', 'lồn', 'cặc', 'buồi', 'chịch', 'đụ', 'má mày', 'con chó',
-  'đồ chó', 'óc chó', 'ngu vl', 'ngu vcl', 'vl', 'vcl', 'vãi lồn',
-  'cc', 'ccc', 'dm', 'đm', 'đmm', 'đmcs', 'clm', 'clgt',
+  'đồ chó', 'óc chó', 'ngu vl', 'ngu vcl', 'vãi lồn', 'vãi',
+  'vcl', 'đmm', 'đmcs', 'clm', 'clgt',
   // Tục tĩu (tiếng Anh)
   'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'dick', 'pussy', 'cock',
 
