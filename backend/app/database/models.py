@@ -201,7 +201,19 @@ class Rating(Base):
 
     session = relationship("ChatSession", back_populates="ratings")
 
+class Notification(Base):
+    __tablename__ = "notifications"
 
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type       = Column(String(50), nullable=False)
+    # report_resolved | report_rejected | warn | ban_7days | ban_permanent
+    title      = Column(NVARCHAR(200), nullable=False)
+    body       = Column(NVARCHAR(500), nullable=False)
+    is_read    = Column(Boolean, nullable=False, default=False)
+    ref_id     = Column(Integer, nullable=True)   # report_id nếu liên quan
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    
 class Report(Base):
     __tablename__ = "reports"
 
@@ -258,3 +270,5 @@ class Appeal(Base):
     @images.setter
     def images(self, value: list):
         self.images_json = json.dumps(value or [], ensure_ascii=False)
+
+
