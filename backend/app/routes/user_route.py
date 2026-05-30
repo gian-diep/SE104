@@ -20,7 +20,7 @@ def get_users(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    q = db.query(User)
+    q = db.query(User).filter(User.status != "deleted")
     if search:
         term = f"%{search}%"
         q = q.filter(
@@ -109,7 +109,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
 
-    db.delete(user)
+    user.status = "deleted"
     db.commit()
 
     return {"message": "Đã xóa tài khoản"}

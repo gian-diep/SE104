@@ -63,6 +63,9 @@ def get_all_listings(
     q = db.query(Listing)
     if status:
         q = q.filter(Listing.status == status)
+    else:
+        # Mặc định ẩn soft-deleted; admin muốn xem thì truyền status=deleted
+        q = q.filter(Listing.status != "deleted")
     if keyword:
         q = q.filter(Listing.item_name.contains(keyword))
     q = q.order_by(Listing.created_at.desc())
@@ -82,7 +85,7 @@ def get_all_users(
     Lấy danh sách tất cả user (trừ admin).
     Trả thêm listing_count để hiển thị số bài đã đăng.
     """
-    q = db.query(User).filter(User.role != "admin")
+    q = db.query(User).filter(User.role != "admin", User.status != "deleted")
     if search:
         q = q.filter(
             User.username.contains(search) | User.email.contains(search)
@@ -158,13 +161,15 @@ def update_user_status(
 
 @router.delete("/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """Xóa user (cascade xóa listings, chat requests liên quan)."""
+    """Soft delete user — đặt status = 'deleted', giữ lại dữ liệu trong DB."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Không thể xóa admin")
-    db.delete(user)
+    user.status = "deleted"
+    # Ẩn tất cả bài đăng của user
+    db.query(Listing).filter(Listing.seller_id == user_id).update({"status": "deleted"})
     db.commit()
 
 
@@ -213,5 +218,5 @@ def admin_delete_listing(listing_id: int, db: Session = Depends(get_db)):
 
         listing.transaction_status = "available"
 
-    db.delete(listing)
+    listing.status = "deleted"
     db.commit()

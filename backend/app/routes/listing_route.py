@@ -1,127 +1,135 @@
 """
-backend/app/routes/listing_route.py
+backend/app/services/listing_service.py
 
-Trả về images là list[str] (image_id).
-Frontend build URL: http://localhost:8000/images/{image_id}
+Thay đổi: images là list[str] (image_id), không phải binary.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from app.database.models import Listing
+from app.schemas.listing_schema import ListingCreate, ListingUpdate
+from sqlalchemy import or_
+from app.database.models import User
 
-from app.database.database import get_db
-from app.schemas.listing_schema import ListingCreate, ListingUpdate, ListingOut
-from app.services import listing_service
-
-router = APIRouter(prefix="/listings", tags=["listings"])
-
-
-def _to_out(listing) -> ListingOut:
-    """Chuyển ORM object → ListingOut, đọc images từ property."""
-    return ListingOut(
-        id=listing.id,
-        seller_id=listing.seller_id,
-        seller_name=listing.seller_name,
-        item_name=listing.item_name,
-        item_price=listing.item_price,
-        item_description=listing.item_description,
-        category=listing.category,
-        condition=listing.condition,
-        subject=listing.subject,
-        university=listing.university,
-        keywords=listing.keywords,
-        status=listing.status,
-        transaction_status=listing.transaction_status or "available",
-        images=listing.images,   # ← đọc qua property, trả list[str]
-        seller_rating=listing.seller.rating if listing.seller else 0,
-        seller_rating_count=listing.seller.rating_count if listing.seller else 0,
-        seller_avatar_url=listing.seller.avatar_url if listing.seller else None,
-        reject_reason=listing.reject_reason,
+def create_listing(db: Session, seller_id: int, data: ListingCreate) -> Listing:
+    seller = db.query(User).filter(User.id == seller_id).first()
+    listing = Listing(
+        seller_id=seller_id,
+        seller_name=seller.username,
+        item_name=data.item_name,
+        item_price=data.item_price,
+        item_description=data.item_description,
+        category=data.category,
+        condition=data.condition,
+        subject=data.subject,
+        university=data.university,
+        keywords=data.keywords,
+        status="pending",
+        transaction_status="available",
     )
+    # Dùng property setter — tự động serialize thành JSON
+    listing.images = data.images   # ← list of image_id strings
+
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+    return listing
 
 
-# ── Public ────────────────────────────────────────────────────────────────────
-
-@router.get("", response_model=List[ListingOut])
 def get_listings(
-    category:   Optional[str] = Query(None),
-    university: Optional[str] = Query(None),
-    keyword:    Optional[str] = Query(None),
-    skip:       int = Query(0, ge=0),
-    limit:      int = Query(20, le=100),
-    db: Session = Depends(get_db),
+    db: Session,
+    category: str = None,
+    university: str = None,
+    keyword: str = None,
+    skip: int = 0,
+    limit: int = 20,
 ):
-    rows = listing_service.get_listings(db, category, university, keyword, skip, limit)
-    return [_to_out(r) for r in rows]
+    q = db.query(Listing).filter(Listing.status == "approved")
+
+    # FILTER
+    if category:
+        q = q.filter(Listing.category == category)
+
+    if university:
+        q = q.filter(Listing.university == university)
+
+    # SEARCH
+    if keyword:
+        q = q.filter(
+            or_(
+                Listing.item_name.ilike(f"%{keyword}%"),
+                Listing.item_description.ilike(f"%{keyword}%"),
+                Listing.subject.ilike(f"%{keyword}%"),
+                Listing.keywords.ilike(f"%{keyword}%"),
+            )
+        )
+
+    # Mới nhất trước
+    q = q.order_by(Listing.created_at.desc())
+
+    return q.offset(skip).limit(limit).all()
 
 
-@router.get("/seller/{seller_id}", response_model=List[ListingOut])
-def get_by_seller(seller_id: int, db: Session = Depends(get_db)):
-    rows = listing_service.get_listings_by_seller(db, seller_id)
-    return [_to_out(r) for r in rows]
+def get_listing_by_id(db: Session, listing_id: int) -> Listing | None:
+    return db.query(Listing).filter(Listing.id == listing_id, Listing.status != "deleted").first()
 
 
-@router.get("/{listing_id}", response_model=ListingOut)
-def get_listing(listing_id: int, db: Session = Depends(get_db)):
-    row = listing_service.get_listing_by_id(db, listing_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
-    return _to_out(row)
+def get_listings_by_seller(db: Session, seller_id: int):
+    return db.query(Listing).filter(Listing.seller_id == seller_id, Listing.status != "deleted").all()
 
 
-# ── Seller ────────────────────────────────────────────────────────────────────
-
-@router.post("", response_model=ListingOut, status_code=201)
-def create_listing(
-    seller_id: int = Query(...),
-    data: ListingCreate = ...,
-    db: Session = Depends(get_db),
-):
-    row = listing_service.create_listing(db, seller_id, data)
-    return _to_out(row)
-
-
-@router.put("/{listing_id}", response_model=ListingOut)
-def update_listing(listing_id: int, data: ListingUpdate, db: Session = Depends(get_db)):
-    row = listing_service.update_listing(db, listing_id, data)
-    if not row:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
-    return _to_out(row)
+def update_listing(db: Session, listing_id: int, data: ListingUpdate) -> Listing | None:
+    listing = get_listing_by_id(db, listing_id)
+    if not listing:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        if field == "images":
+            listing.images = value
+        elif field == "status":
+            # ✅ Chỉ cho phép reset về pending nếu bài đang bị rejected
+            if value == "pending" and listing.status == "rejected":
+                listing.status = "pending"
+        else:
+            setattr(listing, field, value)
+    db.commit()
+    db.refresh(listing)
+    return listing
 
 
-@router.delete("/{listing_id}", status_code=204)
-def delete_listing(listing_id: int, db: Session = Depends(get_db)):
-    ok = listing_service.delete_listing(db, listing_id)
-    if not ok:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
+def delete_listing(db: Session, listing_id: int) -> bool:
+    listing = get_listing_by_id(db, listing_id)
+    if not listing:
+        return False
+    listing.status = "deleted"
+    db.commit()
+    return True
 
 
-@router.patch("/{listing_id}/transaction-status", response_model=ListingOut)
-def update_transaction_status(
-    listing_id: int,
-    transaction_status: str = Query(..., pattern="^(available|negotiating|sold)$"),
-    db: Session = Depends(get_db),
-):
+def update_transaction_status(db: Session, listing_id: int, transaction_status: str) -> Listing | None:
     """Cập nhật trạng thái giao dịch: available | negotiating | sold"""
-    row = listing_service.update_transaction_status(db, listing_id, transaction_status)
-    if not row:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
-    return _to_out(row)
+    listing = get_listing_by_id(db, listing_id)
+    if not listing:
+        return None
+    listing.transaction_status = transaction_status
+    db.commit()
+    db.refresh(listing)
+    return listing
 
 
-# ── Admin ─────────────────────────────────────────────────────────────────────
+def approve_listing(db: Session, listing_id: int) -> Listing | None:
+    listing = get_listing_by_id(db, listing_id)
+    if not listing:
+        return None
+    listing.status = "approved"
+    db.commit()
+    db.refresh(listing)
+    return listing
 
-@router.post("/{listing_id}/approve", response_model=ListingOut)
-def approve(listing_id: int, db: Session = Depends(get_db)):
-    row = listing_service.approve_listing(db, listing_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
-    return _to_out(row)
-
-
-@router.post("/{listing_id}/reject", response_model=ListingOut)
-def reject(listing_id: int, reason: str = Query(""), db: Session = Depends(get_db)):
-    row = listing_service.reject_listing(db, listing_id, reason)
-    if not row:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
-    return _to_out(row)
+def reject_listing(db: Session, listing_id: int, reason: str) -> Listing | None:
+    listing = get_listing_by_id(db, listing_id)
+    if not listing:
+        return None
+    listing.status = "rejected"
+    listing.reject_reason = reason  # ← THÊM DÒNG NÀY
+    db.commit()
+    db.refresh(listing)
+    return listing
