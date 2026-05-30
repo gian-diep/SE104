@@ -246,7 +246,7 @@ export default function Header() {
                     {showNotifs && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />
-                        <div className="absolute right-0 top-full mt-2.5 w-80 bg-white rounded-2xl border border-teal-100 shadow-card-hover z-50 overflow-hidden flex flex-col max-h-[480px]">
+                        <div className="absolute right-0 top-full mt-2.5 w-80 bg-white rounded-2xl border border-teal-100 shadow-card-hover z-50 overflow-hidden flex flex-col max-h-[60vh]">
                           {/* Header */}
                           {/* Panel header */}
                           <div className="flex items-center justify-between px-4 py-3.5 border-b border-teal-100 bg-gradient-to-r from-teal-600 to-teal-500 flex-shrink-0 rounded-t-2xl">
@@ -267,7 +267,13 @@ export default function Header() {
                           </div>
 
                           {/* List */}
-                          <div className="overflow-y-auto flex-1">
+                          <div
+                            className="overflow-y-auto flex-1"
+                            style={{
+                              scrollbarWidth: 'thin',
+                              scrollbarColor: '#14b8a6 transparent',
+                            }}
+                          >
                             {notifs.length === 0 ? (
                               <div className="py-12 flex flex-col items-center gap-3 text-center px-4">
                                 <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center">
