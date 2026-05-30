@@ -587,7 +587,6 @@ function ReportCard({ report, onResolve, onPunish }) {
             Xem tài khoản
           </Link>
  
-          {/* [THAY ĐỔI 1] Nút xử phạt */}
           {!resolved && (
             <button
               onClick={() => setPunishOpen(true)}
@@ -610,7 +609,7 @@ function ReportCard({ report, onResolve, onPunish }) {
         </div>
       </div>
  
-      {/* [THAY ĐỔI 1] Modal xử phạt */}
+      {/* Modal xử phạt */}
       {punishOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
           <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-2xl">
@@ -1294,7 +1293,15 @@ function AppealTab({ onCountChange }) {
     try {
       await reviewAppeal(appealId, { action, note: reviewNote[appealId] || '' })
       setAppeals(prev => prev.map(a =>
-        a.id === appealId ? { ...a, status: action === 'approve' ? 'approved' : 'rejected', admin_note: reviewNote[appealId] || '' } : a
+        a.id === appealId
+          ? {
+              ...a,
+              status: action === 'approve' ? 'approved' : 'rejected',
+              admin_note: reviewNote[appealId] || '',
+              // Xoá thông tin ban khi chấp thuận để badge không còn hiện
+              ...(action === 'approve' && { ban_until: null, ban_reason: null }),
+            }
+          : a
       ))
       onCountChange?.(appeals.filter(a => a.status === 'pending' && a.id !== appealId).length)
       setReviewOpen(r => ({ ...r, [appealId]: false }))
@@ -1393,15 +1400,17 @@ function AppealTab({ onCountChange }) {
                   </div>
                 </div>
 
-                {/* Ban info */}
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
-                  <Ban className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                  <p className="font-paragraph text-xs text-red-700">
-                    {appeal.ban_until
-                      ? <>Bị khóa đến <span className="font-semibold">{new Date(appeal.ban_until).toLocaleDateString('vi-VN')}</span></>
-                      : 'Bị khóa vĩnh viễn'}
-                  </p>
-                </div>
+                {/* Ban info — chỉ hiện khi chưa được chấp thuận */}
+                {appeal.status !== 'approved' && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+                    <Ban className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                    <p className="font-paragraph text-xs text-red-700">
+                      {appeal.ban_until
+                        ? <>Bị khóa đến <span className="font-semibold">{new Date(appeal.ban_until).toLocaleDateString('vi-VN')}</span></>
+                        : 'Bị khóa vĩnh viễn'}
+                    </p>
+                  </div>
+                )}
 
                 {/* Reason */}
                 <div>
@@ -1492,9 +1501,9 @@ function AppealTab({ onCountChange }) {
       rejected: 0,
       total: 0
     })
-    const [reportCount, setReportCount] = useState(0)  // ← THÊM
-    const [userCount, setUserCount]     = useState(0)  // ← THÊM
-    const [appealCount, setAppealCount] = useState(0)  // ← THÊM
+    const [reportCount, setReportCount] = useState(0)
+    const [userCount, setUserCount]     = useState(0)
+    const [appealCount, setAppealCount] = useState(0)
 
     const handleListingsLoaded = useCallback((listings) => {
       setStats({
