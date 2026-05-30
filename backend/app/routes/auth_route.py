@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
+from app.database.models import User, Report
 
 from app.schemas.auth_schema import (
     RegisterRequest,
@@ -22,6 +23,29 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
+
+
+@router.get("/ban-info")
+def get_ban_info(email: str, db: Session = Depends(get_db)):
+    """Trả về user_id, ban_reason và report_reason cho user bị ban — dùng khi login thất bại."""
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.role != "banned":
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản bị ban")
+
+    # Lấy report mới nhất liên quan đến user này (nếu có)
+    latest_report = (
+        db.query(Report)
+        .filter(Report.reported_user_id == user.id)
+        .order_by(Report.created_at.desc())
+        .first()
+    )
+
+    return {
+        "user_id": user.id,
+        "ban_reason": user.ban_reason or None,
+        "report_reason": latest_report.reason if latest_report else None,
+        "report_detail": latest_report.detail if latest_report else None,
+    }
 
 
 @router.post(
@@ -66,19 +90,3 @@ def login(
         )
 
     return logged_user
-
-@router.get("/ban-info")
-def ban_info(email: str, db: Session = Depends(get_db)):
-    """
-    Trả về user_id và thông tin ban để frontend hiển thị form khiếu nại.
-    Chỉ trả dữ liệu nếu tài khoản đang bị ban.
-    """
-    from app.database.models import User
-    user = db.query(User).filter(User.email == email).first()
-    if not user or user.status != "banned":
-        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản bị ban")
-    return {
-        "user_id": user.id,
-        "ban_until": user.ban_until,
-        "username": user.username,
-    }

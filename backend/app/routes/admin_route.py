@@ -11,10 +11,10 @@ Các endpoint dành riêng cho admin:
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime
 
 from app.database.database import get_db
 from app.database.models import User, Listing, ChatSession, Message
-from datetime import datetime
 from app.schemas.listing_schema import ListingOut
 from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -110,12 +110,13 @@ def get_all_users(
 def update_user_status(
     user_id: int,
     action: str = Query(..., description="ban | unban"),
+    reason: Optional[str] = Query(None, description="Lý do ban (chỉ dùng khi action=ban)"),
     db: Session = Depends(get_db),
 ):
     """
     Ban hoặc unban một user.
-    - ban   → role = 'banned'
-    - unban → role = 'user'
+    - ban   → role = 'banned', lưu ban_reason nếu có
+    - unban → role = 'user', xóa ban_reason
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -125,8 +126,10 @@ def update_user_status(
 
     if action == "ban":
         user.role = "banned"
+        user.ban_reason = reason or None
     elif action == "unban":
         user.role = "user"
+        user.ban_reason = None
     else:
         raise HTTPException(status_code=400, detail="action phải là 'ban' hoặc 'unban'")
 
@@ -161,42 +164,42 @@ def get_listing(listing_id: int, db: Session = Depends(get_db)):
     return _to_out(row)
 
 
-@router.delete("/listings/{listing_id}", status_code=200)
+@router.delete("/listings/{listing_id}", status_code=204)
 def admin_delete_listing(listing_id: int, db: Session = Depends(get_db)):
+    """
+    Admin xóa bài đăng.
+    Nếu bài đang negotiating → tự động đóng tất cả chat session active
+    và reset transaction_status về available (trước khi xóa).
+    Tương đương nhấn nút Hủy trong chat của cả 2 bên.
+    """
     listing = db.query(Listing).filter(Listing.id == listing_id).first()
     if not listing:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng")
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
 
-    # Đóng session active + thêm tin nhắn hệ thống trước
-    active_sessions = (
-        db.query(ChatSession)
-        .filter(ChatSession.listing_id == listing_id, ChatSession.status == "active")
-        .all()
-    )
+    # Nếu đang trong giao dịch → hủy tất cả session active liên quan
+    if listing.transaction_status == "negotiating":
+        active_sessions = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.listing_id == listing_id,
+                ChatSession.status == "active",
+            )
+            .all()
+        )
+        for session in active_sessions:
+            session.status = "closed"
+            session.close_reason = "cancelled"
+            session.closed_at = datetime.utcnow()
 
-    for s in active_sessions:
-        s.status = "closed"
-        s.close_reason = "deleted_by_admin"
-        s.closed_at = datetime.utcnow()
-        db.add(Message(
-            session_id=s.id,
-            sender_id=None,
-            text="Bài đăng này đã bị admin xóa. Cuộc thương lượng đã kết thúc.",
-            type="system",
-        ))
+            sys_msg = Message(
+                session_id=session.id,
+                sender_id=None,
+                text="❌ Bài đăng đã bị Admin xóa. Cuộc thương lượng đã tự động bị hủy.",
+                type="system",
+            )
+            db.add(sys_msg)
 
-    db.flush()
+        listing.transaction_status = "available"
 
-    # Xóa toàn bộ ChatSession của listing này (cascade xóa messages, ratings)
-    # để tránh FK constraint khi xóa listing
-    all_sessions = db.query(ChatSession).filter(ChatSession.listing_id == listing_id).all()
-    for s in all_sessions:
-        db.delete(s)
-
-    db.flush()
-
-    # Bây giờ xóa listing an toàn (cascade xóa chat_requests còn lại)
     db.delete(listing)
     db.commit()
-
-    return {"message": "Đã xóa bài đăng và đóng các cuộc thương lượng liên quan"}
