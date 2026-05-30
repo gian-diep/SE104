@@ -1,11 +1,5 @@
 """
 backend/app/routes/admin_route.py
-
-Các endpoint dành riêng cho admin:
-- GET  /admin/listings          → lấy TẤT CẢ bài đăng (kể cả pending, rejected)
-- GET  /admin/users             → lấy danh sách user (trừ admin)
-- PUT  /admin/users/{id}/status → ban / unban user
-- DELETE /admin/users/{id}      → xóa user
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,9 +14,7 @@ from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-# ── Helper: chuyển Listing ORM → ListingOut ───────────────────────────────────
 def _to_out(listing) -> ListingOut:
-    """Chuyển ORM object → ListingOut, đọc images từ property."""
     return ListingOut(
         id=listing.id,
         seller_id=listing.seller_id,
@@ -37,54 +29,36 @@ def _to_out(listing) -> ListingOut:
         keywords=listing.keywords,
         status=listing.status,
         transaction_status=listing.transaction_status or "available",
-        images=listing.images,   # ← đọc qua property, trả list[str]
+        images=listing.images,
         seller_rating=listing.seller.rating if listing.seller else 0,
         seller_rating_count=listing.seller.rating_count if listing.seller else 0,
         reject_reason=listing.reject_reason,
     )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# LISTINGS
-# ══════════════════════════════════════════════════════════════════════════════
-
 @router.get("/listings", response_model=list[ListingOut])
 def get_all_listings(
-    status:   Optional[str] = Query(None),   # pending | approved | rejected | None = tất cả
+    status:   Optional[str] = Query(None),
     keyword:  Optional[str] = Query(None),
     skip:     int = Query(0, ge=0),
     limit:    int = Query(50, le=200),
     db: Session = Depends(get_db),
 ):
-    """
-    Lấy tất cả bài đăng — dành cho admin kiểm duyệt.
-    Không filter status mặc định (khác GET /listings chỉ trả approved).
-    """
     q = db.query(Listing)
     if status:
         q = q.filter(Listing.status == status)
-    else:
-        # Mặc định ẩn soft-deleted; admin muốn xem thì truyền status=deleted
-        q = q.filter(Listing.status != "deleted")
+    # Không filter gì khi không truyền status — trả tất cả kể cả deleted
     if keyword:
         q = q.filter(Listing.item_name.contains(keyword))
     q = q.order_by(Listing.created_at.desc())
     return [_to_out(r) for r in q.offset(skip).limit(limit).all()]
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# USERS
-# ══════════════════════════════════════════════════════════════════════════════
-
 @router.get("/users")
 def get_all_users(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """
-    Lấy danh sách tất cả user (trừ admin).
-    Trả thêm listing_count để hiển thị số bài đã đăng.
-    """
     q = db.query(User).filter(User.role != "admin", User.status != "deleted")
     if search:
         q = q.filter(
@@ -100,9 +74,9 @@ def get_all_users(
             "email":         u.email,
             "university":    u.university,
             "role":          u.role,
-            "status":        u.status,        # ← thêm
-            "ban_until":     u.ban_until,     # ← thêm
-            "ban_reason":    u.ban_reason,    # ← thêm
+            "status":        u.status,
+            "ban_until":     u.ban_until,
+            "ban_reason":    u.ban_reason,
             "avatar_url":    u.avatar_url,
             "rating":        u.rating,
             "rating_count":  u.rating_count,
@@ -119,11 +93,6 @@ def update_user_status(
     reason: Optional[str] = Query(None, description="Lý do ban (chỉ dùng khi action=ban)"),
     db: Session = Depends(get_db),
 ):
-    """
-    Ban hoặc unban một user.
-    - ban   → status = 'banned', lưu ban_reason nếu có
-    - unban → status = 'active', xóa ban_reason
-    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
@@ -133,8 +102,7 @@ def update_user_status(
     if action == "ban":
         user.status = "banned"
         user.ban_reason = reason or None
-        user.ban_until  = None  # ban vĩnh viễn từ tab Users
-        # Gửi thông báo cho người bị ban
+        user.ban_until  = None
         db.add(Notification(
             user_id=user.id,
             type="ban_permanent",
@@ -161,14 +129,12 @@ def update_user_status(
 
 @router.delete("/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """Soft delete user — đặt status = 'deleted', giữ lại dữ liệu trong DB."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Không thể xóa admin")
     user.status = "deleted"
-    # Ẩn tất cả bài đăng của user
     db.query(Listing).filter(Listing.seller_id == user_id).update({"status": "deleted"})
     db.commit()
 
@@ -181,42 +147,22 @@ def get_listing(listing_id: int, db: Session = Depends(get_db)):
     return _to_out(row)
 
 
-@router.delete("/listings/{listing_id}", status_code=204)
+@router.delete("/listings/{listing_id}", status_code=200)
 def admin_delete_listing(listing_id: int, db: Session = Depends(get_db)):
     """
-    Admin xóa bài đăng.
-    Nếu bài đang negotiating → tự động đóng tất cả chat session active
-    và reset transaction_status về available (trước khi xóa).
-    Tương đương nhấn nút Hủy trong chat của cả 2 bên.
+    Soft delete bài đăng (status = 'deleted').
+    Không cho phép xóa bài đang thương lượng.
     """
     listing = db.query(Listing).filter(Listing.id == listing_id).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
 
-    # Nếu đang trong giao dịch → hủy tất cả session active liên quan
     if listing.transaction_status == "negotiating":
-        active_sessions = (
-            db.query(ChatSession)
-            .filter(
-                ChatSession.listing_id == listing_id,
-                ChatSession.status == "active",
-            )
-            .all()
+        raise HTTPException(
+            status_code=400,
+            detail="Không thể xóa bài đăng đang trong quá trình thương lượng."
         )
-        for session in active_sessions:
-            session.status = "closed"
-            session.close_reason = "cancelled"
-            session.closed_at = datetime.utcnow()
-
-            sys_msg = Message(
-                session_id=session.id,
-                sender_id=None,
-                text="❌ Bài đăng đã bị Admin xóa. Cuộc thương lượng đã tự động bị hủy.",
-                type="system",
-            )
-            db.add(sys_msg)
-
-        listing.transaction_status = "available"
 
     listing.status = "deleted"
     db.commit()
+    return {"message": "Đã xóa bài đăng."}
