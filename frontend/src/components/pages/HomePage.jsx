@@ -563,15 +563,7 @@ export default function HomePage() {
   // ── Filter logic — hỗ trợ option 'Khác' cho trường & môn ─────────────────
 
   const filteredListings = applyPriceFilter(
-    (
-      searchResults !== null
-        ? searchResults.filter(item =>
-            item.status === 'approved' &&
-            item.transaction_status === 'available' &&
-            isSellerActive(item)
-          )
-        : approvedListings
-    ).filter(item => {
+    (searchResults !== null ? searchResults.filter(l => l.status === 'approved' && l.transaction_status == 'available' && isSellerActive(l)) : approvedListings).filter(item => {
       if (categoryFilter !== 'all' && item.category !== categoryFilter) return false
       if (conditionFilter !== 'all' && item.condition !== conditionFilter) return false
 
