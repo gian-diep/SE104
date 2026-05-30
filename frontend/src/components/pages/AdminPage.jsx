@@ -1010,7 +1010,7 @@ function UsersTab() {
                 <p className="font-paragraph text-xs text-muted-foreground">{user.university || '—'}</p>
               </div>
               <div className="col-span-6 md:col-span-2">
-                <Badge status={user.role === 'banned' ? 'banned' : 'user'} />
+                <Badge status={user.status === 'banned' ? 'banned' : 'user'} />
               </div>
               <div className="col-span-6 md:col-span-1">
                 <p className="font-paragraph text-xs text-muted-foreground">{user.listing_count ?? 0} bài</p>
@@ -1023,7 +1023,7 @@ function UsersTab() {
                 >
                   <UserCircle className="h-4 w-4" />
                 </button>
-                {user.role === 'banned' ? (
+                {user.status === 'banned' ? (
                   <button onClick={() => unban(user.id)} disabled={busy[user.id]}
                     title="Unban" className="p-2 text-muted-foreground hover:text-green-500 transition-colors disabled:opacity-50">
                     <CheckCircle className="h-4 w-4" />
@@ -1207,7 +1207,7 @@ function UsersTab() {
                 {/* Status */}
                 <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-teal-100 bg-surface">
                   <span className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trạng thái</span>
-                  <Badge status={selectedUser.role === 'banned' ? 'banned' : 'user'} />
+                  <Badge status={selectedUser.status === 'banned' ? 'banned' : 'user'} />
                 </div>
 
                 {/* Join date */}
@@ -1223,7 +1223,7 @@ function UsersTab() {
 
               {/* Actions */}
               <div className="px-6 pb-6 flex gap-3">
-                {selectedUser.role === 'banned' ? (
+                {selectedUser.status === 'banned' ? (
                   <button
                     onClick={async () => {
                       await unban(selectedUser.id)
@@ -1239,7 +1239,7 @@ function UsersTab() {
                     onClick={async () => {
                       if (!confirm('Ban user này?')) return
                       await ban(selectedUser.id)
-                      setSelectedUser(prev => prev ? { ...prev, role: 'banned' } : null)
+                      setSelectedUser(prev => prev ? { ...prev, status: 'banned' } : null)
                     }}
                     disabled={busy[selectedUser.id]}
                     className="flex-1 h-11 rounded-xl bg-orange-500 text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-60"
