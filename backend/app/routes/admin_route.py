@@ -115,8 +115,8 @@ def update_user_status(
 ):
     """
     Ban hoặc unban một user.
-    - ban   → role = 'banned', lưu ban_reason nếu có
-    - unban → role = 'user', xóa ban_reason
+    - ban   → status = 'banned', lưu ban_reason nếu có
+    - unban → status = 'active', xóa ban_reason
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -125,10 +125,10 @@ def update_user_status(
         raise HTTPException(status_code=403, detail="Không thể thay đổi trạng thái admin")
 
     if action == "ban":
-        user.role = "banned"
+        user.status = "banned"
         user.ban_reason = reason or None
     elif action == "unban":
-        user.role = "user"
+        user.status = "active"
         user.ban_reason = None
     else:
         raise HTTPException(status_code=400, detail="action phải là 'ban' hoặc 'unban'")
@@ -138,8 +138,8 @@ def update_user_status(
     return {
         "message": f"Đã {'ban' if action == 'ban' else 'unban'} user {user.username}",
         "user": {
-            "id":   user.id,
-            "role": user.role,
+            "id":     user.id,
+            "status": user.status,
         }
     }
 

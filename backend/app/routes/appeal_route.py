@@ -101,7 +101,7 @@ def review_appeal(
 ):
     """
     Admin duyệt khiếu nại.
-    - approve → unban user (role = 'user'), xóa ban_reason
+    - approve → unban user (status = 'active'), xóa ban_reason
     - reject  → giữ nguyên
     """
     appeal = db.query(Appeal).filter(Appeal.id == appeal_id).first()
@@ -114,8 +114,8 @@ def review_appeal(
         appeal.status = "approved"
         # Tự động unban
         user = db.query(User).filter(User.id == appeal.user_id).first()
-        if user and user.role == "banned":
-            user.role = "user"
+        if user and user.status == "banned":
+            user.status = "active"
             user.ban_reason = None
     elif payload.action == "reject":
         appeal.status = "rejected"

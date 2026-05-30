@@ -29,7 +29,7 @@ router = APIRouter(
 def get_ban_info(email: str, db: Session = Depends(get_db)):
     """Trả về user_id, ban_reason và report_reason cho user bị ban — dùng khi login thất bại."""
     user = db.query(User).filter(User.email == email).first()
-    if not user or user.role != "banned":
+    if not user or user.status != "banned":
         raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản bị ban")
 
     # Lấy report mới nhất liên quan đến user này (nếu có)

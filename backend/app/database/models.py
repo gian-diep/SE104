@@ -23,8 +23,10 @@ class User(Base):
     password     = Column(String(255), nullable=False)
     # university   = Column(String(255), nullable=True)
     university   = Column(NVARCHAR(255), nullable=True)
-    role         = Column(String(20),  nullable=False, default="user")
+    role         = Column(String(20),  nullable=False, default="user")   # user | admin
+    status       = Column(String(20),  nullable=False, default="active") # active | banned | deleted
     ban_reason   = Column(NVARCHAR(500), nullable=True)
+    ban_until    = Column(DateTime, nullable=True)
     avatar_url   = Column(String(500), nullable=True)
     rating       = Column(Float,   nullable=False, default=0.0)
     rating_count = Column(Integer, nullable=False, default=0)
@@ -201,19 +203,7 @@ class Rating(Base):
 
     session = relationship("ChatSession", back_populates="ratings")
 
-class Notification(Base):
-    __tablename__ = "notifications"
 
-    id         = Column(Integer, primary_key=True, index=True)
-    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    type       = Column(String(50), nullable=False)
-    # report_resolved | report_rejected | warn | ban_7days | ban_permanent
-    title      = Column(NVARCHAR(200), nullable=False)
-    body       = Column(NVARCHAR(500), nullable=False)
-    is_read    = Column(Boolean, nullable=False, default=False)
-    ref_id     = Column(Integer, nullable=True)   # report_id nếu liên quan
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    
 class Report(Base):
     __tablename__ = "reports"
 
@@ -246,6 +236,22 @@ class Report(Base):
     def images(self, value: list):
         self.images_json = json.dumps(value or [], ensure_ascii=False)
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type       = Column(String(50), nullable=False)
+    # report_resolved | report_rejected | warn | ban_7days | ban_permanent
+    title      = Column(NVARCHAR(200), nullable=False)
+    body       = Column(NVARCHAR(500), nullable=False)
+    is_read    = Column(Boolean, nullable=False, default=False)
+    ref_id     = Column(Integer, nullable=True)   # report_id nếu liên quan
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+
+
 class Appeal(Base):
     __tablename__ = "ban_appeals"
 
@@ -270,5 +276,3 @@ class Appeal(Base):
     @images.setter
     def images(self, value: list):
         self.images_json = json.dumps(value or [], ensure_ascii=False)
-
-

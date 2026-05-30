@@ -1,6 +1,3 @@
-from datetime import datetime
-
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.models import User
@@ -31,13 +28,7 @@ def register_user(
             user_data.password
         ),
         university=user_data.university,
-
-        # phân quyền
         role='user',
-
-        # trạng thái tài khoản
-        status='active',
-        ban_until=None
     )
 
     db.add(new_user)
@@ -62,35 +53,10 @@ def login_user(
         return None
 
     # ─────────────────────────
-    # AUTO UNBAN nếu hết hạn
-    # ─────────────────────────
-    if (
-        user.status == "banned"
-        and user.ban_until
-    ):
-        if user.ban_until < datetime.utcnow():
-            user.status = "active"
-            user.ban_until = None
-
-            db.commit()
-            db.refresh(user)
-
-    # ─────────────────────────
     # CHẶN LOGIN nếu bị ban
     # ─────────────────────────
-    if user.status == "banned":
-
-        # Ban có thời hạn
-        if user.ban_until:
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "Tài khoản của bạn bị khóa đến "
-                    + user.ban_until.strftime("%d/%m/%Y")
-                )
-            )
-
-        # Ban vĩnh viễn
+    if user.role == "banned":
+        from fastapi import HTTPException
         raise HTTPException(
             status_code=403,
             detail="Tài khoản của bạn đã bị khóa vĩnh viễn"
