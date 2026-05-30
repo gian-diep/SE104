@@ -11,7 +11,7 @@ import { createReport } from '@/lib/Reportapi.js'
 import {
   Star, User, GraduationCap, BookOpen, Package,
   ArrowLeft, MessageCircle, CheckCircle, XCircle, X as XIcon,
-  Flag, AlertTriangle, Send, ChevronDown, Ban,
+  Flag, AlertTriangle, Send, ChevronDown, Ban, ImagePlus, Trash2,
 } from 'lucide-react'
 
 function get_avatar_url(avatar_url) {
@@ -252,22 +252,62 @@ function ReportUserModal({ profile, currentUser, onClose }) {
   const [reportError, setReportError]   = useState('')
   const [isSending, setIsSending]       = useState(false)
 
+  // ── Image state ───────────────────────────────────────────
+  const [reportImages, setReportImages]       = useState([])       // { file, preview } chưa upload
+  const [uploadedUrls, setUploadedUrls]       = useState([])       // URL Cloudinary đã upload
+  const [imageUploading, setImageUploading]   = useState(false)
+
+  const handleAddImages = (e) => {
+    const files = Array.from(e.target.files || [])
+    const remaining = 3 - reportImages.length - uploadedUrls.length
+    if (remaining <= 0) return
+    const toAdd = files.slice(0, remaining).map(f => ({ file: f, preview: URL.createObjectURL(f) }))
+    setReportImages(prev => [...prev, ...toAdd])
+    e.target.value = ''
+  }
+
+  const removeImage = (idx) => {
+    setReportImages(prev => {
+      URL.revokeObjectURL(prev[idx].preview)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
+
   const handleReport = async () => {
     setReportError('')
     if (!reportReason)        { setReportError('Vui lòng chọn lý do'); return }
     if (!reportDetail.trim()) { setReportError('Vui lòng nhập nội dung chi tiết'); return }
     try {
       setIsSending(true)
+
+      // Upload ảnh nếu có
+      let imageUrls = [...uploadedUrls]
+      if (reportImages.length > 0) {
+        setImageUploading(true)
+        for (const img of reportImages) {
+          const fd = new FormData()
+          fd.append('file', img.file)
+          const res = await fetch(`${API_URL}/images/upload`, { method: 'POST', body: fd })
+          if (res.ok) {
+            const data = await res.json()
+            imageUrls.push(data.url || data.image_id)
+          }
+        }
+        setImageUploading(false)
+      }
+
       await createReport({
         reporter_id:       currentUser.id,
         reported_user_id:  profile.id,
         reported_username: profile.username,
-        listing_id:        null,   // báo cáo người dùng, không từ bài đăng cụ thể
+        listing_id:        null,
         reason:            reportReason,
         detail:            reportDetail,
+        images:            imageUrls,
       })
       setReportDone(true)
     } catch (err) {
+      setImageUploading(false)
       setReportError(err.message || 'Không thể gửi báo cáo, vui lòng thử lại.')
     } finally {
       setIsSending(false)
@@ -353,6 +393,33 @@ function ReportUserModal({ profile, currentUser, onClose }) {
                   <p className="font-paragraph text-xs text-muted-foreground text-right mt-1">{reportDetail.length}/500</p>
                 </div>
 
+                {/* Ảnh minh chứng */}
+                <div>
+                  <label className="font-heading text-xs uppercase tracking-widest text-muted-foreground block mb-2">
+                    Ảnh minh chứng <span className="text-muted-foreground/50 normal-case font-paragraph">(tuỳ chọn, tối đa 3 ảnh)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {reportImages.map((img, idx) => (
+                      <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-teal-100 flex-shrink-0">
+                        <img src={img.preview} alt="minh chứng" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                    {reportImages.length < 3 && (
+                      <label className="w-20 h-20 rounded-xl border-2 border-dashed border-teal-200 hover:border-primary cursor-pointer flex flex-col items-center justify-center gap-1 transition-colors bg-teal-50/50 hover:bg-teal-50 flex-shrink-0">
+                        <ImagePlus className="w-5 h-5 text-teal-400" />
+                        <span className="font-paragraph text-xs text-teal-400">Thêm ảnh</span>
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleAddImages} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
                 {reportError && (
                   <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200">
                     <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
@@ -367,7 +434,7 @@ function ReportUserModal({ profile, currentUser, onClose }) {
                     className="flex-1 h-11 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white font-heading font-semibold text-sm transition-colors shadow-btn flex items-center justify-center gap-2"
                   >
                     <Send className="h-4 w-4" />
-                    {isSending ? 'Đang gửi...' : 'Gửi báo cáo'}
+                    {isSending ? (imageUploading ? 'Đang tải ảnh...' : 'Đang gửi...') : 'Gửi báo cáo'}
                   </button>
                   <button
                     onClick={onClose}

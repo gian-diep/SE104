@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X as XIcon, Eye, EyeOff, BookOpen, Sparkles, AlertTriangle, Send, CheckCircle, Clock } from 'lucide-react'
+import { X as XIcon, Eye, EyeOff, BookOpen, Sparkles, AlertTriangle, Send, CheckCircle, Clock, ImagePlus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import logo from '@/logo.png'
 import { checkAppeal, createAppeal } from '@/lib/Appealapi.js'
+import { API_URL } from '@/lib/Api.js'
 
 const UNIVERSITIES = [
   'Đại học Bách Khoa TP.HCM',
@@ -46,6 +47,8 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
   const [appealText, setAppealText] = useState('')
   const [appealLoading, setAppealLoading] = useState(false)
   const [appealData, setAppealData] = useState(null)    // appeal từ server nếu đã gửi
+  const [appealImages, setAppealImages] = useState([])  // { file, preview }
+  const [appealImageUploading, setAppealImageUploading] = useState(false)
 
   useEffect(() => { setTab(defaultTab) }, [defaultTab])
 
@@ -57,7 +60,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
     setError(''); setShowPassword(false)
     setLoginEmail(''); setLoginPassword('')
     setRegName(''); setRegEmail(''); setRegPassword(''); setRegConfirm(''); setRegUniversity(''); setRegCustomUniversity('')
-    setBanInfo(null); setAppealView('check'); setAppealText(''); setAppealData(null)
+    setBanInfo(null); setAppealView('check'); setAppealText(''); setAppealData(null); setAppealImages([])
   }
 
   const handle_close = () => { reset_form(); onClose() }
@@ -124,6 +127,22 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
 
   // ── Submit appeal ─────────────────────────────────────────────────────────
 
+  const handleAppealAddImages = (e) => {
+    const files = Array.from(e.target.files || [])
+    const remaining = 3 - appealImages.length
+    if (remaining <= 0) return
+    const toAdd = files.slice(0, remaining).map(f => ({ file: f, preview: URL.createObjectURL(f) }))
+    setAppealImages(prev => [...prev, ...toAdd])
+    e.target.value = ''
+  }
+
+  const removeAppealImage = (idx) => {
+    setAppealImages(prev => {
+      URL.revokeObjectURL(prev[idx].preview)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
+
   const handleSubmitAppeal = async () => {
     if (!banInfo?.userId) return
     if (appealText.trim().length < 10) {
@@ -132,9 +151,26 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
     }
     setAppealLoading(true); setError('')
     try {
-      await createAppeal({ user_id: banInfo.userId, reason: appealText.trim() })
+      // Upload ảnh nếu có
+      let imageUrls = []
+      if (appealImages.length > 0) {
+        setAppealImageUploading(true)
+        for (const img of appealImages) {
+          const fd = new FormData()
+          fd.append('file', img.file)
+          const res = await fetch(`${API_URL}/images/upload`, { method: 'POST', body: fd })
+          if (res.ok) {
+            const data = await res.json()
+            imageUrls.push(data.url || data.image_id)
+          }
+        }
+        setAppealImageUploading(false)
+      }
+
+      await createAppeal({ user_id: banInfo.userId, reason: appealText.trim(), images: imageUrls })
       setAppealView('submitted')
     } catch (err) {
+      setAppealImageUploading(false)
       setError(err.message)
     } finally {
       setAppealLoading(false)
@@ -242,13 +278,40 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
             <p className="text-xs text-muted-foreground text-right">{appealText.length}/1000</p>
           </div>
 
+          {/* Ảnh minh chứng */}
+          <div className="space-y-1.5">
+            <label className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Ảnh minh chứng <span className="normal-case font-paragraph font-normal text-muted-foreground/60">(tuỳ chọn, tối đa 3)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {appealImages.map((img, idx) => (
+                <div key={idx} className="relative w-18 h-18 w-[72px] h-[72px] rounded-xl overflow-hidden border border-teal-100 flex-shrink-0">
+                  <img src={img.preview} alt="minh chứng" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => removeAppealImage(idx)}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-red-500 flex items-center justify-center transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3 text-white" />
+                  </button>
+                </div>
+              ))}
+              {appealImages.length < 3 && (
+                <label className="w-[72px] h-[72px] rounded-xl border-2 border-dashed border-teal-200 hover:border-primary cursor-pointer flex flex-col items-center justify-center gap-1 transition-colors bg-teal-50/50 hover:bg-teal-50 flex-shrink-0">
+                  <ImagePlus className="w-5 h-5 text-teal-400" />
+                  <span className="font-paragraph text-[10px] text-teal-400">Thêm ảnh</span>
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleAppealAddImages} />
+                </label>
+              )}
+            </div>
+          </div>
+
           <button
             onClick={handleSubmitAppeal}
             disabled={appealLoading || appealText.trim().length < 10}
             className="w-full h-12 rounded-xl bg-teal-gradient text-white font-heading font-semibold text-sm shadow-btn hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:translate-y-0 flex items-center justify-center gap-2"
           >
             <Send className="w-4 h-4" />
-            {appealLoading ? 'Đang gửi...' : 'Gửi khiếu nại'}
+            {appealLoading ? (appealImageUploading ? 'Đang tải ảnh...' : 'Đang gửi...') : 'Gửi khiếu nại'}
           </button>
 
           <button

@@ -557,6 +557,22 @@ function ReportCard({ report, onResolve, onPunish }) {
           </div>
         )}
  
+        {/* Ảnh minh chứng */}
+        {report.images?.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[11px] font-heading uppercase tracking-widest text-muted-foreground mb-2">
+              Ảnh minh chứng
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {report.images.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noreferrer">
+                  <img src={url} alt={`minh chứng ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border border-teal-100 hover:opacity-80 transition-opacity cursor-zoom-in" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Admin note nếu có */}
         {report.admin_note && (
           <div className="mb-4 px-3 py-2 rounded-xl border border-blue-100 bg-blue-50/50">
@@ -1416,6 +1432,20 @@ function AppealTab({ onCountChange }) {
                   <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-1.5">Nội dung khiếu nại</p>
                   <p className="font-paragraph text-sm text-foreground leading-relaxed whitespace-pre-wrap">{appeal.reason}</p>
                 </div>
+
+                {/* Ảnh minh chứng */}
+                {appeal.images?.length > 0 && (
+                  <div>
+                    <p className="font-heading text-xs uppercase tracking-widest text-muted-foreground mb-1.5">Ảnh minh chứng</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {appeal.images.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`minh chứng ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border border-teal-100 hover:opacity-80 transition-opacity cursor-zoom-in" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Admin note nếu đã xử lý */}
                 {appeal.admin_note && (

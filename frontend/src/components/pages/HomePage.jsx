@@ -491,10 +491,15 @@ export default function HomePage() {
       setSearchLoading(true)
 
       try {
-        const data = await getListings({
-          keyword: searchQuery.trim()
-        })
+        const params = {
+          keyword: searchQuery.trim(),
+          limit: 100,
+        }
+        // Pass active filters to backend to get better results
+        if (categoryFilter !== 'all')   params.category   = categoryFilter
+        if (universityFilter !== 'all' && universityFilter !== 'Khác') params.university = universityFilter
 
+        const data = await getListings(params)
         setSearchResults(data)
       } catch (err) {
         console.error('Listing search failed:', err)
@@ -505,7 +510,7 @@ export default function HomePage() {
     }, 250)
 
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, categoryFilter, universityFilter])
 
   // Debounce search user — 250ms, dùng ilike của backend (hỗ trợ unaccent)
   useEffect(() => {
