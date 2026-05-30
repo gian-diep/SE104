@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X as XIcon, Send, CheckCircle, XCircle, MessageCircle, Star, BookOpen } from 'lucide-react'
+import { X as XIcon, Send, CheckCircle, XCircle, MessageCircle, Star, BookOpen, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
@@ -12,16 +12,19 @@ import {
   confirmComplete,
   cancelSession,
 } from '@/lib/Chatapi.js'
+import { API_URL } from '@/lib/Api.js'
 import { Link } from 'react-router-dom'
 
 export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
   const { currentUser } = useAuth()
-  const [session,    setSession]    = useState(sessionProp)
-  const [messages,   setMessages]   = useState([])
-  const [input,      setInput]      = useState('')
-  const [isSending,  setIsSending]  = useState(false)
-  const [showRating, setShowRating] = useState(false)
-  const [isLoading,  setIsLoading]  = useState(true)
+  const [session,        setSession]        = useState(sessionProp)
+  const [messages,       setMessages]       = useState([])
+  const [input,          setInput]          = useState('')
+  const [isSending,      setIsSending]      = useState(false)
+  const [showRating,     setShowRating]     = useState(false)
+  const [isLoading,      setIsLoading]      = useState(true)
+  // Status của người kia trong phòng chat (để hiện banner cảnh báo)
+  const [otherUserStatus, setOtherUserStatus] = useState(null)
   const messagesEndRef = useRef(null)
   const pollRef        = useRef(null)
 
@@ -40,18 +43,36 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
     }
   }, [sessionProp?.id])
 
+  // ── Check status người kia ────────────────────────────────────────────────
+  const checkOtherUserStatus = useCallback(async () => {
+    if (!sessionProp || !currentUser) return
+    const isSeller = currentUser.id === sessionProp.seller_id
+    const otherId  = isSeller ? sessionProp.buyer_id : sessionProp.seller_id
+    try {
+      const r = await fetch(`${API_URL}/users/${otherId}`)
+      if (!r.ok) return
+      const data = await r.json()
+      setOtherUserStatus(data.status)
+    } catch {
+      // Bỏ qua lỗi mạng
+    }
+  }, [sessionProp, currentUser])
+
   useEffect(() => {
     if (!isOpen || !sessionProp) return
     setIsLoading(true)
-    refresh().finally(() => setIsLoading(false))
-  }, [isOpen, sessionProp, refresh])
+    Promise.all([refresh(), checkOtherUserStatus()]).finally(() => setIsLoading(false))
+  }, [isOpen, sessionProp, refresh, checkOtherUserStatus])
 
   // Polling mỗi 3 giây khi chat đang mở và session active
   useEffect(() => {
     if (!isOpen || session?.status !== 'active') return
-    pollRef.current = setInterval(refresh, 3000)
+    pollRef.current = setInterval(() => {
+      refresh()
+      checkOtherUserStatus()
+    }, 3000)
     return () => clearInterval(pollRef.current)
-  }, [isOpen, session?.status, refresh])
+  }, [isOpen, session?.status, refresh, checkOtherUserStatus])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -99,12 +120,16 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
   }
 
   // ── Derived state ────────────────────────────────────────────────────────
-  const isClosed       = session?.status === 'closed'
-  const isCompleted    = isClosed && session?.close_reason === 'completed'
-  const isDeletedByAdmin = isClosed && session?.close_reason === 'deleted_by_admin'
-  const isSeller       = currentUser?.id === session?.seller_id
-  const hasConfirmed   = isSeller ? session?.seller_confirmed : session?.buyer_confirmed
-  const hasRated       = isSeller ? session?.seller_rated : session?.buyer_rated
+  const isClosed          = session?.status === 'closed'
+  const isCompleted       = isClosed && session?.close_reason === 'completed'
+  const isDeletedByAdmin  = isClosed && session?.close_reason === 'deleted_by_admin'
+  const isBannedClose     = isClosed && session?.close_reason === 'banned'
+  const isSeller          = currentUser?.id === session?.seller_id
+  const hasConfirmed      = isSeller ? session?.seller_confirmed : session?.buyer_confirmed
+  const hasRated          = isSeller ? session?.seller_rated : session?.buyer_rated
+  const otherName         = isSeller ? session?.buyer_name : session?.seller_name
+  // Người kia đang bị ban mà session vẫn còn active (chưa kịp đóng) → hiện cảnh báo
+  const otherIsBanned     = otherUserStatus === 'banned'
 
   if (!isOpen || !session) return null
 
@@ -161,7 +186,7 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
                       className="group block"
                     >
                       <h2 className="font-heading text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                        {isSeller ? session.buyer_name : session.seller_name}
+                        {otherName}
                       </h2>
 
                       <p className="font-paragraph text-sm text-muted-foreground group-hover:text-primary transition-colors">
@@ -220,13 +245,47 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
                 </Link>
               </div>
             </div>
+
+            {/* ── Banner: người kia bị ban (session chưa đóng kịp) ── */}
+            {!isClosed && otherIsBanned && (
+              <div className="flex items-start justify-between gap-3 px-6 py-4 bg-amber-50 border-b border-amber-200 flex-shrink-0">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-heading text-sm font-semibold text-amber-800">
+                      {otherName} đã bị khóa tài khoản
+                    </p>
+                    <p className="font-paragraph text-xs text-amber-700 mt-0.5">
+                      Người dùng này hiện không thể tham gia giao dịch. Bạn có thể đợi hoặc hủy giao dịch.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCancel}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-heading text-xs font-semibold transition-colors"
+                >
+                  Hủy ngay
+                </button>
+              </div>
+            )}
+
+            {/* ── Banner: session đóng vì ban ── */}
+            {isBannedClose && (
+              <div className="flex items-center gap-2 px-6 py-3 bg-red-50 border-b border-red-200 flex-shrink-0">
+                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="font-paragraph text-sm text-red-600 font-medium">
+                  Giao dịch đã bị đóng vì một bên tham gia bị khóa tài khoản.
+                </p>
+              </div>
+            )}
+
             {/* Banner đánh giá */}
             {isCompleted && !hasRated && (
               <div className="flex items-center justify-between gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
                   <p className="font-paragraph text-sm text-amber-700">
-                    Giao dịch hoàn thành! Hãy đánh giá <strong>{isSeller ? session.buyer_name : session.seller_name}</strong>
+                    Giao dịch hoàn thành! Hãy đánh giá <strong>{otherName}</strong>
                   </p>
                 </div>
                 <Button
@@ -272,7 +331,7 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
                 messages.map((msg) =>
                   msg.type === 'system' ? (
                     <div key={msg.id} className="text-center">
-                      <span className="font-paragraph text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 inline-block">
+                      <span className="font-paragraph text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 inline-block rounded-full">
                         {msg.text}
                       </span>
                     </div>
@@ -330,6 +389,7 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
                   {!hasConfirmed ? (
                     <button
                       onClick={handleConfirmComplete}
+                      disabled={otherIsBanned}
                       className="
                         h-12 rounded-2xl
                         bg-teal-gradient text-white
@@ -338,6 +398,7 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
                         hover:-translate-y-0.5
                         transition-all
                         flex items-center justify-center gap-2
+                        disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0
                       "
                     >
                       <CheckCircle className="h-4 w-4" />
@@ -376,7 +437,7 @@ export default function ChatModal({ isOpen, onClose, session: sessionProp }) {
                   </button>
                 </div>
 
-                {hasConfirmed && (
+                {hasConfirmed && !otherIsBanned && (
                   <p className="text-center text-xs text-muted-foreground mt-3">
                     Đang chờ bên còn lại xác nhận hoàn thành
                   </p>

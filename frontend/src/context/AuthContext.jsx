@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { registerApi, loginApi } from '@/lib/Authapi.js'
 import { updateUserProfile, deleteUserAccount } from '@/lib/Userapi.js'
 import { API_URL } from '@/lib/Api.js'
@@ -6,9 +6,10 @@ import { API_URL } from '@/lib/Api.js'
 const AuthContext = createContext(null)
 
 const CURRENT_USER_KEY = 'bookycle_current_user'
-// const CURRENT_USER_KEY = 'bookycle_current_user'
 
-// Thêm vào đây
+// Poll status mỗi 30 giây khi user đang online
+const BAN_POLL_INTERVAL = 30_000
+
 export const STORAGE_KEYS = {
   CHAT_REQUESTS: 'bookycle_chat_requests',
   CHAT_SESSIONS: 'bookycle_chat_sessions',
@@ -17,8 +18,29 @@ export const STORAGE_KEYS = {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading]     = useState(true)
+  const pollRef = useRef(null)
 
-  // Khôi phục user từ localStorage, sau đó LUÔN verify từ server trước khi render
+  const fetchUserStatus = useCallback(async (userId) => {
+    try {
+      const r = await fetch(`${API_URL}/users/${userId}`)
+      if (!r.ok) return null
+      return await r.json()
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Khi phát hiện bị ban → xóa session, trở về guest ngay lập tức
+  const forceLogout = useCallback(() => {
+    setCurrentUser(null)
+    localStorage.removeItem(CURRENT_USER_KEY)
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [])
+
+  // ── Khởi động: khôi phục từ localStorage rồi verify ──────────────────────
   useEffect(() => {
     const saved = localStorage.getItem(CURRENT_USER_KEY)
     if (!saved) { setIsLoading(false); return }
@@ -27,60 +49,59 @@ export function AuthProvider({ children }) {
     try { parsed = JSON.parse(saved) }
     catch { localStorage.removeItem(CURRENT_USER_KEY); setIsLoading(false); return }
 
-    // Gọi API lấy status mới nhất — giữ isLoading=true cho đến khi xong
-    // để AccountPage không render trước khi biết user có bị ban không
-    fetch(`${API_URL}/users/${parsed.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(fresh => {
-        if (fresh) {
+    fetchUserStatus(parsed.id).then(fresh => {
+      if (fresh) {
+        if (fresh.status === 'banned') {
+          forceLogout()
+        } else {
           const updated = { ...parsed, ...fresh }
           setCurrentUser(updated)
           localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated))
-        } else {
-          // API lỗi → dùng data cũ
-          setCurrentUser(parsed)
         }
-      })
-      .catch(() => {
+      } else {
         // Offline → dùng data cũ
         setCurrentUser(parsed)
-      })
-      .finally(() => setIsLoading(false))
-  }, [])
+      }
+    }).finally(() => setIsLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Polling định kỳ khi đang đăng nhập ────────────────────────────────────
+  useEffect(() => {
+    if (!currentUser) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      return
+    }
+
+    pollRef.current = setInterval(async () => {
+      const fresh = await fetchUserStatus(currentUser.id)
+      if (fresh?.status === 'banned') forceLogout()
+    }, BAN_POLL_INTERVAL)
+
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    }
+  }, [currentUser?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   const login = async (email, password) => {
-  const data = await loginApi({
-    email,
-    password,
-  })
+    const data = await loginApi({ email, password })
 
-  const userRes = await fetch(
-    `${API_URL}/users/${data.id}`
-  )
+    const userRes = await fetch(`${API_URL}/users/${data.id}`)
+    const fullUser = await userRes.json()
 
-  const fullUser = await userRes.json()
+    if (fullUser.status === 'banned') {
+      throw new Error(
+        fullUser.ban_until
+          ? `Tài khoản của bạn bị khóa đến ${fullUser.ban_until}`
+          : 'Tài khoản của bạn đã bị khóa vĩnh viễn'
+      )
+    }
 
-  // 🚫 Nếu account bị ban → không login
-  if (fullUser.status === 'banned') {
-    throw new Error(
-      fullUser.ban_until
-        ? `Tài khoản của bạn bị khóa đến ${fullUser.ban_until}`
-        : 'Tài khoản của bạn đã bị khóa vĩnh viễn'
-    )
+    setCurrentUser(fullUser)
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(fullUser))
+    return fullUser
   }
-
-  // ✅ Login bình thường
-  setCurrentUser(fullUser)
-
-  localStorage.setItem(
-    CURRENT_USER_KEY,
-    JSON.stringify(fullUser)
-  )
-
-  return fullUser
-}
 
   const register = async (name, email, password, university) => {
     const user = await registerApi({
@@ -99,25 +120,15 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(CURRENT_USER_KEY)
   }
 
-  // ── Profile ──────────────────────────────────────────────────────────────
-
-  /**
-   * Cập nhật profile qua API, rồi sync lại localStorage
-   * @param {{ username?, university?, avatar_url?, password? }} data
-   */
   const updateProfile = async (data) => {
     if (!currentUser) throw new Error('Chưa đăng nhập')
     const res = await updateUserProfile(currentUser.id, data)
-    // API trả về { message, user: { id, username, avatar_url } }
-    // → merge vào currentUser để giữ lại email, university, role, ...
     const patch = res?.user ?? res
     const updated = { ...currentUser, ...patch }
     setCurrentUser(updated)
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated))
     return updated
   }
-
-  // ── Delete account ────────────────────────────────────────────────────────
 
   const deleteAccount = async () => {
     if (!currentUser) throw new Error('Chưa đăng nhập')
