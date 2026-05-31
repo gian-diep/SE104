@@ -44,6 +44,7 @@ app.include_router(chat_route.router)
 app.include_router(report_route.router)
 app.include_router(appeal_route.router)
 app.include_router(notification_route.router)
+app.include_router(sse_route.router)
 
 # # ── Mount static — frontend dùng trực tiếp mà không qua route ───────────────
 # app.mount("/images",  StaticFiles(directory="uploads/images"),  name="images")   # ← THÊM

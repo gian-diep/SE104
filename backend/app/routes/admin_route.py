@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 
 from app.database.database import get_db
 from app.database.models import User, Listing, ChatRequest, ChatSession, Message, Notification, Appeal
+from app import sse_bus
+import asyncio
+import json
 from app.schemas.listing_schema import ListingOut
 from app.services import listing_service
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -159,6 +162,13 @@ def update_user_status(
             type="ban_permanent",
             title="🚫 Tài khoản của bạn đã bị khóa",
             body=f"Lý do: {reason or 'Vi phạm quy định'}. Bạn có thể gửi khiếu nại nếu cho rằng đây là nhầm lẫn.",
+        ))
+
+        # Push SSE event để kick user ngay lập tức nếu đang online
+        asyncio.create_task(sse_bus.publish(
+            user_id,
+            event="banned",
+            data=json.dumps({"reason": reason or "Vi phạm quy định"}, ensure_ascii=False),
         ))
 
     elif action == "unban":
