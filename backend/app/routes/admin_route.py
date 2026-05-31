@@ -137,7 +137,7 @@ def get_all_users(
 
 
 @router.put("/users/{user_id}/status")
-def update_user_status(
+async def update_user_status(
     user_id: int,
     action: str = Query(..., description="ban | unban"),
     reason: Optional[str] = Query(None, description="Lý do ban (chỉ dùng khi action=ban)"),
@@ -165,11 +165,11 @@ def update_user_status(
         ))
 
         # Push SSE event để kick user ngay lập tức nếu đang online
-        asyncio.create_task(sse_bus.publish(
+        await sse_bus.publish(
             user_id,
             event="banned",
             data=json.dumps({"reason": reason or "Vi phạm quy định"}, ensure_ascii=False),
-        ))
+        )
 
     elif action == "unban":
         user.status = "active"
