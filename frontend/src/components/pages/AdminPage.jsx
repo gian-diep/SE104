@@ -736,6 +736,7 @@ function UsersTab() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [deleteModal, setDeleteModal] = useState({ open: false, userId: null, userName: '' })
   const [banModal, setBanModal] = useState({ open: false, userId: null, userName: '', reason: '' })
+  const [unbanModal, setUnbanModal] = useState({ open: false, userId: null, userName: '' })
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -766,11 +767,18 @@ function UsersTab() {
     finally { setBusy(p => ({ ...p, [banModal.userId]: false })) }
   }
 
-  const unban = async (userId) => {
-    setBusy(p => ({ ...p, [userId]: true }))
-    try { await adminUnbanUser(userId); await load() }
-    catch (e) { alert('Lỗi: ' + e.message) }
-    finally { setBusy(p => ({ ...p, [userId]: false })) }
+  const unban = (userId, userName) => {
+    setUnbanModal({ open: true, userId, userName })
+  }
+
+  const confirmUnban = async () => {
+    setBusy(p => ({ ...p, [unbanModal.userId]: true }))
+    try {
+      await adminUnbanUser(unbanModal.userId)
+      await load()
+      setUnbanModal({ open: false, userId: null, userName: '' })
+    } catch (e) { alert('Lỗi: ' + e.message) }
+    finally { setBusy(p => ({ ...p, [unbanModal.userId]: false })) }
   }
 
   const deleteUser = async () => {
@@ -852,7 +860,7 @@ function UsersTab() {
                   <UserCircle className="h-4 w-4" />
                 </button>
                 {user.status === 'banned' ? (
-                  <button onClick={() => unban(user.id)} disabled={busy[user.id]}
+                  <button onClick={() => unban(user.id, user.username)} disabled={busy[user.id]}
                     title="Unban" className="p-2 text-muted-foreground hover:text-green-500 transition-colors disabled:opacity-50">
                     <CheckCircle className="h-4 w-4" />
                   </button>
@@ -912,6 +920,43 @@ function UsersTab() {
               <button onClick={deleteUser} disabled={busy[deleteModal.userId]}
                 className="flex-1 rounded-xl bg-red-500 px-5 py-3 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
                 {busy[deleteModal.userId] ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unban Modal */}
+      {unbanModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-emerald-100 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] animate-in zoom-in-95 duration-200">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-500" />
+            <div className="px-7 pt-8 pb-6 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-emerald-100 shadow-sm">
+                <CheckCircle className="h-8 w-8 text-emerald-500" />
+              </div>
+              <h3 className="mt-5 font-heading text-2xl uppercase tracking-wide text-gray-900">Gỡ cấm tài khoản</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">Bạn có chắc chắn muốn gỡ cấm tài khoản này không?</p>
+              <div className="mt-5 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/50 p-4 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                    <User className="h-6 w-6 text-emerald-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600">Tài khoản sẽ được gỡ cấm</p>
+                    <p className="truncate font-heading text-sm uppercase text-gray-900">{unbanModal.userName}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 border-t border-gray-100 bg-gray-50/60 px-7 py-5">
+              <button onClick={() => setUnbanModal({ open: false, userId: null, userName: '' })}
+                className="flex-1 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900">
+                Hủy
+              </button>
+              <button onClick={confirmUnban} disabled={busy[unbanModal.userId]}
+                className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-heading uppercase tracking-wider text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">
+                {busy[unbanModal.userId] ? 'Đang xử lý...' : 'Xác nhận gỡ cấm'}
               </button>
             </div>
           </div>
@@ -1028,7 +1073,7 @@ function UsersTab() {
               <div className="px-6 pb-6 flex gap-3">
                 {selectedUser.status === 'banned' ? (
                   <button
-                    onClick={async () => { await unban(selectedUser.id); setSelectedUser(prev => prev ? { ...prev, status: 'user' } : null) }}
+                    onClick={() => unban(selectedUser.id, selectedUser.username)}
                     disabled={busy[selectedUser.id]}
                     className="flex-1 h-11 rounded-xl bg-emerald-500 text-white font-heading font-semibold text-sm flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-60">
                     <CheckCircle className="h-4 w-4" />Gỡ cấm
