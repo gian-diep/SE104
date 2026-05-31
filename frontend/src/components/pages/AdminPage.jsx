@@ -1101,6 +1101,7 @@ function AppealTab({ onCountChange }) {
       ))
       onCountChange?.(appeals.filter(a => a.status === 'pending' && a.id !== appealId).length)
       setReviewOpen(r => ({ ...r, [appealId]: false }))
+      setFilter(action === 'approve' ? 'approved' : 'rejected')
     } catch (err) {
       setError(err.message)
     } finally {
