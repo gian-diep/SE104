@@ -21,7 +21,7 @@ def _to_out(listing) -> ListingOut:
     return ListingOut(
         id=listing.id,
         seller_id=listing.seller_id,
-        seller_name=listing.seller.username if listing.seller else listing.seller_name,
+        seller_name=listing.seller_name,
         item_name=listing.item_name,
         item_price=listing.item_price,
         item_description=listing.item_description,
@@ -35,7 +35,6 @@ def _to_out(listing) -> ListingOut:
         images=listing.images,
         seller_rating=listing.seller.rating if listing.seller else 0,
         seller_rating_count=listing.seller.rating_count if listing.seller else 0,
-        seller_avatar_url=listing.seller.avatar_url if listing.seller else None,
         reject_reason=listing.reject_reason,
     )
 
@@ -183,10 +182,6 @@ async def update_user_status(
         user.ban_reason = None
         user.ban_until  = None
 
-        # Xóa appeal cũ (nếu có) để lần ban sau user vẫn gửi được khiếu nại
-        old_appeal = db.query(Appeal).filter(Appeal.user_id == user_id).first()
-        if old_appeal:
-            db.delete(old_appeal)
 
     else:
         raise HTTPException(status_code=400, detail="action phải là 'ban' hoặc 'unban'")

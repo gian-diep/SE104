@@ -257,7 +257,7 @@ class Appeal(Base):
     __tablename__ = "ban_appeals"
 
     id         = Column(Integer, primary_key=True, index=True)
-    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     reason     = Column(NVARCHAR(2000), nullable=False)
     images_json = Column(Text, default="[]")          # list[str] — Cloudinary URLs
     status     = Column(String(20), nullable=False, default="pending")
