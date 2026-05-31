@@ -57,7 +57,7 @@ def check_appeal(user_id: int, db: Session = Depends(get_db)):
     """Kiểm tra user đã gửi khiếu nại chưa (chỉ tính lần ban hiện tại)."""
     appeal = db.query(Appeal).filter(
         Appeal.user_id == user_id,
-        Appeal.status.in_(["pending", "rejected"]),
+        Appeal.status == "pending",
     ).first()
     if not appeal:
         return {"submitted": False}
@@ -70,7 +70,7 @@ def create_appeal(payload: AppealCreate, db: Session = Depends(get_db)):
     """User gửi khiếu nại — mỗi lần bị ban chỉ được gửi 1 lần."""
     if db.query(Appeal).filter(
         Appeal.user_id == payload.user_id,
-        Appeal.status.in_(["pending", "rejected"]),
+        Appeal.status == "pending",
     ).first():
         raise HTTPException(status_code=400, detail="Bạn đã gửi khiếu nại rồi.")
 
