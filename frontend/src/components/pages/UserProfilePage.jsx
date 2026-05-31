@@ -546,6 +546,15 @@ export default function UserProfilePage() {
             <p className="font-paragraph text-sm text-muted-foreground">Người dùng đã vi phạm chính sách cộng đồng.</p>
           </div>
 
+        ) : profile_data?.status === 'deleted' ? (
+          <div className="py-24 flex flex-col items-center justify-center bg-white rounded-3xl border border-dashed border-gray-200 text-center gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+              <User className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="font-heading text-lg font-bold text-muted-foreground">Tài khoản này đã bị xóa</p>
+            <p className="font-paragraph text-sm text-muted-foreground">Người dùng này không còn tồn tại trên hệ thống.</p>
+          </div>
+
         ) : profile_data ? (
           <>
             {/* Profile card */}
