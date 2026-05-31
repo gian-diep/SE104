@@ -92,6 +92,61 @@ def _notify_user_transactions(db: Session, banned_user_id: int):
         ))
 
 
+def _delete_user_transactions(db, user_id: int, username: str):
+    """
+    Khi user bị xóa:
+      - ChatRequest pending → cancelled
+      - ChatSession active → đóng + system message + notification cho người kia
+    """
+    # 1. Hủy ChatRequest pending
+    pending_requests = (
+        db.query(ChatRequest)
+        .filter(
+            ChatRequest.status == "pending",
+            (ChatRequest.buyer_id == user_id) | (ChatRequest.seller_id == user_id),
+        )
+        .all()
+    )
+    for req in pending_requests:
+        req.status = "cancelled"
+
+    # 2. Đóng ChatSession active + thông báo người kia
+    active_sessions = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.status == "active",
+            (ChatSession.buyer_id == user_id) | (ChatSession.seller_id == user_id),
+        )
+        .all()
+    )
+    for session in active_sessions:
+        other_user_id = session.seller_id if session.buyer_id == user_id else session.buyer_id
+
+        session.status = "closed"
+        session.close_reason = "cancelled"
+        from datetime import datetime
+        session.closed_at = datetime.utcnow()
+
+        # Reset listing về available nếu chưa sold
+        listing = db.query(Listing).filter(Listing.id == session.listing_id).first()
+        if listing and listing.transaction_status != "sold":
+            listing.transaction_status = "available"
+        listing_name = listing.item_name if listing else "sản phẩm"
+
+        db.add(Message(
+            session_id=session.id,
+            sender_id=None,
+            text=f"❌ Tài khoản của người dùng kia đã bị xóa. Cuộc trò chuyện đã được đóng.",
+            type="system",
+        ))
+        db.add(Notification(
+            user_id=other_user_id,
+            type="partner_deleted",
+            title="❌ Người trao đổi với bạn đã xóa tài khoản",
+            body=f"Cuộc trò chuyện về '{listing_name}' đã được đóng tự động.",
+        ))
+
+
 @router.get("/listings", response_model=list[ListingOut])
 def get_all_listings(
     status:   Optional[str] = Query(None),
@@ -115,7 +170,7 @@ def get_all_users(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    q = db.query(User).filter(User.role != "admin", User.status != "deleted")
+    q = db.query(User).filter(User.role != "admin")
     if search:
         q = q.filter(
             User.username.contains(search) | User.email.contains(search)
@@ -206,6 +261,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User không tồn tại")
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Không thể xóa admin")
+    _delete_user_transactions(db, user_id, user.username)
     user.status = "deleted"
     db.query(Listing).filter(Listing.seller_id == user_id).update({"status": "deleted"})
     db.commit()

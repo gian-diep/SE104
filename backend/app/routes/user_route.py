@@ -103,12 +103,16 @@ def update_user(
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
+    from app.routes.admin_route import _delete_user_transactions
+    from app.database.models import Listing
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
 
+    _delete_user_transactions(db, user_id, user.username)
     user.status = "deleted"
+    db.query(Listing).filter(Listing.seller_id == user_id).update({"status": "deleted"})
     db.commit()
 
     return {"message": "Đã xóa tài khoản"}
