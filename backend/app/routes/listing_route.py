@@ -21,7 +21,7 @@ def _to_out(listing) -> ListingOut:
     return ListingOut(
         id=listing.id,
         seller_id=listing.seller_id,
-        seller_name=listing.seller.username if listing.seller else listing.seller_name,
+        seller_name=listing.seller_name,
         item_name=listing.item_name,
         item_price=listing.item_price,
         item_description=listing.item_description,
@@ -48,7 +48,7 @@ def get_listings(
     university: Optional[str] = Query(None),
     keyword:    Optional[str] = Query(None),
     skip:       int = Query(0, ge=0),
-    limit:      int = Query(20, le=100),
+    limit:      int = Query(20, le=500),
     db: Session = Depends(get_db),
 ):
     rows = listing_service.get_listings(db, category, university, keyword, skip, limit)
