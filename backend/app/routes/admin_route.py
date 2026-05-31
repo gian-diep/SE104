@@ -21,7 +21,7 @@ def _to_out(listing) -> ListingOut:
     return ListingOut(
         id=listing.id,
         seller_id=listing.seller_id,
-        seller_name=listing.seller_name,
+        seller_name=listing.seller.username if listing.seller else listing.seller_name,
         item_name=listing.item_name,
         item_price=listing.item_price,
         item_description=listing.item_description,
@@ -35,6 +35,7 @@ def _to_out(listing) -> ListingOut:
         images=listing.images,
         seller_rating=listing.seller.rating if listing.seller else 0,
         seller_rating_count=listing.seller.rating_count if listing.seller else 0,
+        seller_avatar_url=listing.seller.avatar_url if listing.seller else None,
         reject_reason=listing.reject_reason,
     )
 
