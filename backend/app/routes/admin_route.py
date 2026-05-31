@@ -39,51 +39,57 @@ def _to_out(listing) -> ListingOut:
     )
 
 
-def _cancel_user_transactions(db: Session, user_id: int):
+def _notify_user_transactions(db: Session, banned_user_id: int):
     """
-    Hủy toàn bộ giao dịch đang hoạt động của user bị ban:
-      - ChatRequest pending → cancelled
-      - ChatSession active → closed (close_reason='banned')
-        + reset listing.transaction_status về available
+    Khi user bị ban:
+      - ChatRequest pending → cancelled (người kia không cần chờ nữa)
+      - ChatSession active → KHÔNG đóng, gửi system message + notification
+        để người kia tự quyết định hủy hay chờ unban.
     """
-    # 1. Hủy ChatRequest còn pending (buyer hoặc seller đều hủy)
+    # 1. Hủy ChatRequest còn pending
     pending_requests = (
         db.query(ChatRequest)
         .filter(
             ChatRequest.status == "pending",
-            (ChatRequest.buyer_id == user_id) | (ChatRequest.seller_id == user_id),
+            (ChatRequest.buyer_id == banned_user_id) | (ChatRequest.seller_id == banned_user_id),
         )
         .all()
     )
     for req in pending_requests:
         req.status = "cancelled"
 
-    # 2. Đóng ChatSession đang active
+    # 2. ChatSession đang active → giữ nguyên, chỉ thông báo cho người kia
     active_sessions = (
         db.query(ChatSession)
         .filter(
             ChatSession.status == "active",
-            (ChatSession.buyer_id == user_id) | (ChatSession.seller_id == user_id),
+            (ChatSession.buyer_id == banned_user_id) | (ChatSession.seller_id == banned_user_id),
         )
         .all()
     )
     for session in active_sessions:
-        session.status = "closed"
-        session.close_reason = "banned"
-        session.closed_at = datetime.utcnow()
+        # Xác định người kia (không phải người bị ban)
+        other_user_id = (
+            session.seller_id if session.buyer_id == banned_user_id else session.buyer_id
+        )
 
-        # Thêm tin nhắn hệ thống vào chat để bên kia thấy lý do
+        # Gửi system message vào chat để người kia thấy ngay
         db.add(Message(
             session_id=session.id,
             sender_id=None,
-            text="⚠️ Cuộc trò chuyện đã bị đóng vì một bên tham gia bị khóa tài khoản.",
+            text="⚠️ Người dùng kia vừa bị khóa tài khoản tạm thời. Bạn có thể chờ họ được mở khóa hoặc hủy cuộc trò chuyện này nếu không còn nhu cầu.",
             type="system",
         ))
 
-        # Reset listing về available nếu đang negotiating
+        # Gửi notification cho người kia
         listing = db.query(Listing).filter(Listing.id == session.listing_id).first()
-        if listing and listing.transaction_status == "negotiating":
-            listing.transaction_status = "available"
+        listing_name = listing.item_name if listing else "sản phẩm"
+        db.add(Notification(
+            user_id=other_user_id,
+            type="ban_partner",
+            title="⚠️ Người trao đổi với bạn bị khóa tài khoản",
+            body=f"Cuộc trò chuyện về '{listing_name}' vẫn còn mở. Bạn có thể chờ hoặc vào chat để hủy.",
+        ))
 
 
 @router.get("/listings", response_model=list[ListingOut])
@@ -154,8 +160,8 @@ async def update_user_status(
         user.ban_reason = reason or None
         user.ban_until  = None
 
-        # Hủy toàn bộ giao dịch đang hoạt động
-        _cancel_user_transactions(db, user_id)
+        # Thông báo cho người đang trao đổi với user bị ban
+        _notify_user_transactions(db, user_id)
 
         db.add(Notification(
             user_id=user.id,
