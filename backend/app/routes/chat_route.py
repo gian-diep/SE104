@@ -354,7 +354,13 @@ def cancel_session(session_id: int, user_id: int, db: Session = Depends(get_db))
     s.status       = "closed"
     s.close_reason = "cancelled"
     s.closed_at    = datetime.utcnow()
-    
+
+    # Đánh dấu ChatRequest tương ứng là cancelled
+    # để buyer có thể gửi lại yêu cầu cho bài đăng này
+    req = db.query(ChatRequest).filter(ChatRequest.id == s.request_id).first()
+    if req:
+        req.status = "cancelled"
+
     listing = db.query(Listing).filter(Listing.id == s.listing_id).first()
     if listing and listing.transaction_status != "sold":
         listing.transaction_status = "available"
