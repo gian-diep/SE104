@@ -24,8 +24,7 @@ def get_users(
     if search:
         term = f"%{search}%"
         q = q.filter(
-            func.unaccent(User.username).ilike(func.unaccent(term)) |
-            func.unaccent(User.university).ilike(func.unaccent(term))
+            func.unaccent(User.username).ilike(func.unaccent(term))
         )
     users = q.all()
 
