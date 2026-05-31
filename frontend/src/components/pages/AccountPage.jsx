@@ -334,17 +334,17 @@ function RatingsModal({ userId, onClose }) {
             return (
               <div key={r.id} className="bg-white rounded-2xl border border-teal-100 shadow-soft p-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-sm font-black text-primary">
+                  <Link to={`/nguoi-dung/${r.rater_id}`} className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden bg-teal-50 flex items-center justify-center font-heading text-sm font-black text-primary hover:ring-2 hover:ring-primary/40 transition-all">
                     {r.rater_avatar ? (
                       <img src={getAvatarUrl(r.rater_avatar)} alt={r.rater_name} className="w-full h-full object-cover" />
                     ) : (
                       getInitials(r.rater_name)
                     )}
-                  </div>
+                  </Link>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-heading text-sm font-bold text-foreground truncate">{r.rater_name}</span>
+                      <Link to={`/nguoi-dung/${r.rater_id}`} className="font-heading text-sm font-bold text-foreground truncate hover:text-primary transition-colors">{r.rater_name}</Link>
                       <span className="font-paragraph text-xs text-muted-foreground flex-shrink-0">
                         {new Date(r.created_at).toLocaleDateString('vi-VN')}
                       </span>
