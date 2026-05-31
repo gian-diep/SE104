@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading]     = useState(true)
   const pollRef = useRef(null)
   const sseRef  = useRef(null)   // EventSource hiện tại
+  const notifRefreshRef = useRef(null) // callback để refresh notification từ ngoài
 
   const fetchUserStatus = useCallback(async (userId) => {
     try {
@@ -65,6 +66,10 @@ export function AuthProvider({ children }) {
 
     es.addEventListener('deleted', () => {
       forceLogout()
+    })
+
+    es.addEventListener('new_notification', () => {
+      if (notifRefreshRef.current) notifRefreshRef.current()
     })
 
     es.onerror = () => {
@@ -178,6 +183,10 @@ export function AuthProvider({ children }) {
     logout()
   }
 
+  const registerNotifRefresh = useCallback((fn) => {
+    notifRefreshRef.current = fn
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
@@ -188,6 +197,7 @@ export function AuthProvider({ children }) {
         logout,
         updateProfile,
         deleteAccount,
+        registerNotifRefresh,
         STORAGE_KEYS,
       }}
     >

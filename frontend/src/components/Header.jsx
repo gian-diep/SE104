@@ -85,7 +85,7 @@ function NavIconBtn({ to, href, icon: Icon, label, badge, primary = false }) {
   return <Link to={to} className={cls}>{inner}</Link>
 }
 
-function useNotifications(userId) {
+function useNotifications(userId, registerNotifRefresh) {
   const [notifs, setNotifs]   = useState([])
   const [loading, setLoading] = useState(false)
   const timerRef = useRef(null)
@@ -103,18 +103,14 @@ function useNotifications(userId) {
     setLoading(true)
     fetch_().finally(() => setLoading(false))
     timerRef.current = setInterval(fetch_, 30000)
-
-    // Lắng nghe SSE new_notification để refresh ngay lập tức
-    const es = new EventSource(`${API_URL}/sse/users/${userId}/status`)
-    es.addEventListener('new_notification', () => {
-      fetch_()
-    })
-
-    return () => {
-      clearInterval(timerRef.current)
-      es.close()
-    }
+    return () => clearInterval(timerRef.current)
   }, [userId, fetch_])
+
+  // Đăng ký callback để AuthContext gọi khi có new_notification SSE
+  useEffect(() => {
+    if (!registerNotifRefresh) return
+    registerNotifRefresh(fetch_)
+  }, [registerNotifRefresh, fetch_])
 
   const unread = notifs.filter(n => !n.is_read).length
 
@@ -197,12 +193,12 @@ const DEFAULT_NOTIF_CFG = {
 }
 
 export default function Header() {
-  const { currentUser, logout, STORAGE_KEYS } = useAuth()
+  const { currentUser, logout, STORAGE_KEYS, registerNotifRefresh } = useAuth()
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu]   = useState(false)
   const [showNotifs, setShowNotifs]       = useState(false)
   const [authModal, setAuthModal]         = useState({ open: false, tab: 'login' })
-  const { notifs, unread, readAll, readOne } = useNotifications(currentUser?.id)
+  const { notifs, unread, readAll, readOne } = useNotifications(currentUser?.id, registerNotifRefresh)
 
   const openLogin    = () => setAuthModal({ open: true, tab: 'login' })
   const openRegister = () => setAuthModal({ open: true, tab: 'register' })
