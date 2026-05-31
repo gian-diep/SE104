@@ -159,6 +159,7 @@ async def update_user_status(
         user.status = "banned"
         user.ban_reason = reason or None
         user.ban_until  = None
+        user.banned_at  = datetime.utcnow()
 
         # Thông báo cho người đang trao đổi với user bị ban
         _notify_user_transactions(db, user_id)
@@ -181,6 +182,7 @@ async def update_user_status(
         user.status = "active"
         user.ban_reason = None
         user.ban_until  = None
+        user.banned_at  = None
 
 
     else:

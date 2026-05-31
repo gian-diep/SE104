@@ -27,6 +27,7 @@ class User(Base):
     status       = Column(String(20),  nullable=False, default="active") # active | banned | deleted
     ban_reason   = Column(NVARCHAR(500), nullable=True)
     ban_until    = Column(DateTime, nullable=True)
+    banned_at    = Column(DateTime, nullable=True)
     avatar_url   = Column(String(500), nullable=True)
     rating       = Column(Float,   nullable=False, default=0.0)
     rating_count = Column(Integer, nullable=False, default=0)

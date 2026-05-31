@@ -55,28 +55,31 @@ def _appeal_out(a: Appeal, user: User) -> dict:
 @router.get("/check/{user_id}")
 def check_appeal(user_id: int, db: Session = Depends(get_db)):
     """Kiểm tra user đã gửi khiếu nại chưa (chỉ tính lần ban hiện tại)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.banned_at:
+        return {"submitted": False}
     appeal = db.query(Appeal).filter(
         Appeal.user_id == user_id,
-        Appeal.status == "pending",
+        Appeal.status.in_(["pending", "rejected"]),
+        Appeal.created_at >= user.banned_at,
     ).first()
     if not appeal:
         return {"submitted": False}
-    user = db.query(User).filter(User.id == user_id).first()
     return {"submitted": True, "appeal": _appeal_out(appeal, user)}
 
 
 @router.post("/")
 def create_appeal(payload: AppealCreate, db: Session = Depends(get_db)):
     """User gửi khiếu nại — mỗi lần bị ban chỉ được gửi 1 lần."""
-    if db.query(Appeal).filter(
-        Appeal.user_id == payload.user_id,
-        Appeal.status == "pending",
-    ).first():
-        raise HTTPException(status_code=400, detail="Bạn đã gửi khiếu nại rồi.")
-
     user = db.query(User).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại.")
+    if user.banned_at and db.query(Appeal).filter(
+        Appeal.user_id == payload.user_id,
+        Appeal.status.in_(["pending", "rejected"]),
+        Appeal.created_at >= user.banned_at,
+    ).first():
+        raise HTTPException(status_code=400, detail="Bạn đã gửi khiếu nại rồi.")
 
     # Giới hạn tối đa 3 ảnh
     images = (payload.images or [])[:3]

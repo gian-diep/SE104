@@ -164,6 +164,7 @@ def punish_user_from_report(
         user.status     = "banned"
         user.ban_reason = note or "Vi phạm quy định"
         user.ban_until  = datetime.utcnow() + timedelta(days=7)
+        user.banned_at  = datetime.utcnow()
         notif_type  = "ban_7days"
         notif_title = "🚫 Tài khoản bị khóa 7 ngày"
         notif_body  = f"Tài khoản bị khóa 7 ngày. Lý do: {note or 'Vi phạm quy định'}. Bạn có thể gửi khiếu nại nếu cho rằng đây là nhầm lẫn."
@@ -172,6 +173,7 @@ def punish_user_from_report(
         user.status     = "banned"
         user.ban_reason = note or "Vi phạm quy định nghiêm trọng"
         user.ban_until  = None
+        user.banned_at  = datetime.utcnow()
         notif_type  = "ban_permanent"
         notif_title = "🚫 Tài khoản bị khóa vĩnh viễn"
         notif_body  = f"Tài khoản bị khóa vĩnh viễn. Lý do: {note or 'Vi phạm quy định nghiêm trọng'}. Bạn có thể gửi khiếu nại nếu cho rằng đây là nhầm lẫn."
