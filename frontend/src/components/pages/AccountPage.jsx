@@ -756,6 +756,13 @@ export default function AccountPage() {
   const { currentUser, isLoading, updateProfile, deleteAccount } = useAuth()
   const navigate = useNavigate()
 
+  // Redirect về home nếu chưa đăng nhập — dùng useEffect tránh race condition khi lazy load
+  useEffect(() => {
+    if (!isLoading && !currentUser) {
+      navigate('/', { replace: true })
+    }
+  }, [isLoading, currentUser, navigate])
+
   const [username, setUsername]           = useState('')
   const [university, setUniversity]       = useState('')
   const [password, setPassword]           = useState('')
@@ -900,7 +907,7 @@ export default function AccountPage() {
 
   const isNegotiating = deleteModal.type === 'negotiating'
 
-  if (isLoading) {
+  if (isLoading || !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="relative w-12 h-12">
@@ -910,8 +917,6 @@ export default function AccountPage() {
       </div>
     )
   }
-
-  if (!currentUser) { navigate('/', { replace: true }); return null }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
