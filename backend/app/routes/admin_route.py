@@ -255,16 +255,46 @@ async def update_user_status(
 
 
 @router.delete("/users/{user_id}", status_code=204)
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+async def delete_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Không thể xóa admin")
+
+    # Lấy danh sách other_user_id trước khi xóa (để push SSE sau commit)
+    active_sessions = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.status == "active",
+            (ChatSession.buyer_id == user_id) | (ChatSession.seller_id == user_id),
+        )
+        .all()
+    )
+    other_user_ids = [
+        s.seller_id if s.buyer_id == user_id else s.buyer_id
+        for s in active_sessions
+    ]
+
     _delete_user_transactions(db, user_id, user.username)
     user.status = "deleted"
     db.query(Listing).filter(Listing.seller_id == user_id).update({"status": "deleted"})
     db.commit()
+
+    # Push SSE để kick user bị xóa ngay lập tức (nếu đang online)
+    await sse_bus.publish(
+        user_id,
+        event="deleted",
+        data=json.dumps({"reason": "Tài khoản của bạn đã bị xóa bởi quản trị viên."}, ensure_ascii=False),
+    )
+
+    # Push SSE notification real-time cho những người đang trao đổi với user bị xóa
+    for other_id in other_user_ids:
+        await sse_bus.publish(
+            other_id,
+            event="new_notification",
+            data=json.dumps({"message": "partner_deleted"}, ensure_ascii=False),
+        )
 
 
 @router.get("/listings/{listing_id}", response_model=ListingOut)

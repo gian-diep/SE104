@@ -53,6 +53,16 @@ def login_user(
         return None
 
     # ─────────────────────────
+    # CHẶN LOGIN nếu đã bị xóa
+    # ─────────────────────────
+    if user.status == "deleted":
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=403,
+            detail="Tài khoản này đã bị xóa."
+        )
+
+    # ─────────────────────────
     # CHẶN LOGIN nếu bị ban
     # ─────────────────────────
     from datetime import datetime
