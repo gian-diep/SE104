@@ -1212,15 +1212,18 @@ export default function AccountPage() {
                             }
                           </button>
                           {listing.status === 'approved' && (
-                            <select
-                              value={listing.transaction_status || 'available'}
-                              onChange={e => handleUpdateTransactionStatus(listing, e.target.value)}
-                              className="px-3 py-2 font-heading text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-transparent hover:bg-teal-50 transition-colors cursor-pointer outline-none border-0 text-center"
-                            >
-                              <option value="available">Còn hàng</option>
-                              <option value="negotiating">Thương lượng</option>
-                              <option value="sold">Đã bán</option>
-                            </select>
+                            <span title={listing.transaction_status === 'negotiating' ? 'Đang thương lượng, không thể đổi trạng thái' : ''}>
+                              <select
+                                value={listing.transaction_status || 'available'}
+                                onChange={e => handleUpdateTransactionStatus(listing, e.target.value)}
+                                disabled={listing.transaction_status === 'negotiating'}
+                                className="px-3 py-2 font-heading text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-transparent hover:bg-teal-50 transition-colors outline-none border-0 text-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                              >
+                                <option value="available">Còn hàng</option>
+                                <option value="negotiating">Thương lượng</option>
+                                <option value="sold">Đã bán</option>
+                              </select>
+                            </span>
                           )}
                           <button onClick={() => handleDeleteListing(listing)}
                             className="flex items-center justify-center gap-1.5 px-4 py-3 font-heading text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors">
