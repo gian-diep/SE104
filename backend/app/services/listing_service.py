@@ -119,6 +119,11 @@ def update_transaction_status(db: Session, listing_id: int, transaction_status: 
     listing = get_listing_by_id(db, listing_id)
     if not listing:
         return None
+
+    # Không cho phép đổi khi đang thương lượng
+    if listing.transaction_status == "negotiating":
+        return "negotiating_locked"
+
     listing.transaction_status = transaction_status
     db.commit()
     db.refresh(listing)

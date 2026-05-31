@@ -164,7 +164,16 @@ def send_request(
         ChatRequest.status.in_(["pending", "approved"]),
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Bạn đã gửi yêu cầu cho bài đăng này rồi")
+        # Nếu request approved nhưng session đã completed → cho phép gửi lại
+        if existing.status == "approved":
+            session = db.query(ChatSession).filter(
+                ChatSession.request_id == existing.id,
+                ChatSession.close_reason == "completed",
+            ).first()
+            if not session:
+                raise HTTPException(status_code=400, detail="Bạn đã gửi yêu cầu cho bài đăng này rồi")
+        else:
+            raise HTTPException(status_code=400, detail="Bạn đã gửi yêu cầu cho bài đăng này rồi")
 
     req = ChatRequest(
         listing_id=listing_id,

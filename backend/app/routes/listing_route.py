@@ -106,6 +106,8 @@ def update_transaction_status(
     row = listing_service.update_transaction_status(db, listing_id, transaction_status)
     if not row:
         raise HTTPException(status_code=404, detail="Không tìm thấy bài đăng.")
+    if row == "negotiating_locked":
+        raise HTTPException(status_code=400, detail="Không thể đổi trạng thái khi đang thương lượng.")
     return _to_out(row)
 
 
