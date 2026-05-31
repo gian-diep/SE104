@@ -7,7 +7,10 @@ const AuthContext = createContext(null)
 
 const CURRENT_USER_KEY = 'bookycle_current_user'
 
-// Poll status mỗi 30 giây khi user đang online
+// SSE_URL dùng cùng base với API_URL
+const SSE_URL = API_URL
+
+// Fallback poll mỗi 30 giây (phòng khi SSE mất kết nối)
 const BAN_POLL_INTERVAL = 30_000
 
 export const STORAGE_KEYS = {
@@ -19,6 +22,7 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading]     = useState(true)
   const pollRef = useRef(null)
+  const sseRef  = useRef(null)   // EventSource hiện tại
 
   const fetchUserStatus = useCallback(async (userId) => {
     try {
@@ -34,11 +38,38 @@ export function AuthProvider({ children }) {
   const forceLogout = useCallback(() => {
     setCurrentUser(null)
     localStorage.removeItem(CURRENT_USER_KEY)
+
     if (pollRef.current) {
       clearInterval(pollRef.current)
       pollRef.current = null
     }
+    if (sseRef.current) {
+      sseRef.current.close()
+      sseRef.current = null
+    }
   }, [])
+
+  // ── Kết nối SSE để nhận push event khi bị ban ─────────────────────────────
+  const connectSSE = useCallback((userId) => {
+    // Đóng connection cũ nếu có
+    if (sseRef.current) {
+      sseRef.current.close()
+      sseRef.current = null
+    }
+
+    const es = new EventSource(`${SSE_URL}/sse/users/${userId}/status`)
+
+    es.addEventListener('banned', () => {
+      forceLogout()
+    })
+
+    es.onerror = () => {
+      // SSE lỗi/mất kết nối → tự reconnect sau 5s (EventSource tự retry)
+      // Không cần làm gì thêm, fallback polling vẫn chạy song song
+    }
+
+    sseRef.current = es
+  }, [forceLogout])
 
   // ── Khởi động: khôi phục từ localStorage rồi verify ──────────────────────
   useEffect(() => {
@@ -65,13 +96,19 @@ export function AuthProvider({ children }) {
     }).finally(() => setIsLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Polling định kỳ khi đang đăng nhập ────────────────────────────────────
+  // ── SSE + Polling định kỳ khi đang đăng nhập ──────────────────────────────
   useEffect(() => {
     if (!currentUser) {
+      // Dọn dẹp khi logout
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      if (sseRef.current)  { sseRef.current.close(); sseRef.current = null }
       return
     }
 
+    // 1. Kết nối SSE — nhận event ngay lập tức khi bị ban
+    connectSSE(currentUser.id)
+
+    // 2. Polling fallback — phòng khi SSE không hoạt động (proxy, môi trường giới hạn)
     pollRef.current = setInterval(async () => {
       const fresh = await fetchUserStatus(currentUser.id)
       if (fresh?.status === 'banned') forceLogout()
@@ -79,6 +116,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      if (sseRef.current)  { sseRef.current.close(); sseRef.current = null }
     }
   }, [currentUser?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
