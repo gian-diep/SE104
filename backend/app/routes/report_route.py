@@ -61,14 +61,19 @@ def get_reports(db: Session = Depends(get_db)):
     .all()
     )
 
+    reporter_ids = list({r.reporter_id for r, _ in reports})
+    reporters = {u.id: u for u in db.query(User).filter(User.id.in_(reporter_ids)).all()}
+
     result = []
     for r, user in reports:
+        reporter = reporters.get(r.reporter_id)
         result.append({
             "id": r.id,
 
             "reporter_id": r.reporter_id,
+            "reporter_username": reporter.username if reporter else None,
 
-            "reported_username": r.reported_username,
+            "reported_username": user.username,
             "reported_user_id": r.reported_user_id,
 
             "listing_id": r.listing_id,
