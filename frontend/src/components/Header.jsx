@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { LogOut, User, PlusCircle, MessageCircle, BookOpen, ChevronDown, Search, Bell, X as XIcon, CheckCheck, ShieldCheck, ShieldAlert, AlertTriangle, Ban, Clock } from 'lucide-react'
+import { LogOut, User, PlusCircle, MessageCircle, BookOpen, ChevronDown, Search, Bell, X as XIcon, CheckCheck, ShieldCheck, ShieldAlert, AlertTriangle, Ban, Clock, UserX, Trash2 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/modals/AuthModal'
@@ -103,7 +103,17 @@ function useNotifications(userId) {
     setLoading(true)
     fetch_().finally(() => setLoading(false))
     timerRef.current = setInterval(fetch_, 30000)
-    return () => clearInterval(timerRef.current)
+
+    // Lắng nghe SSE new_notification để refresh ngay lập tức
+    const es = new EventSource(`${API_URL}/sse/users/${userId}/status`)
+    es.addEventListener('new_notification', () => {
+      fetch_()
+    })
+
+    return () => {
+      clearInterval(timerRef.current)
+      es.close()
+    }
   }, [userId, fetch_])
 
   const unread = notifs.filter(n => !n.is_read).length
@@ -162,6 +172,22 @@ const NOTIF_CONFIG = {
     bg: 'bg-red-50/60',
     badge: 'bg-red-200 text-red-700',
     badgeLabel: 'Khóa vĩnh viễn',
+  },
+  partner_deleted: {
+    Icon: UserX, iconColor: 'text-rose-600',
+    iconBg: 'bg-rose-100',
+    border: 'border-l-rose-400',
+    bg: 'bg-rose-50/40',
+    badge: 'bg-rose-100 text-rose-700',
+    badgeLabel: 'Tài khoản bị xóa',
+  },
+  ban_partner: {
+    Icon: AlertTriangle, iconColor: 'text-orange-500',
+    iconBg: 'bg-orange-100',
+    border: 'border-l-orange-400',
+    bg: 'bg-orange-50/40',
+    badge: 'bg-orange-100 text-orange-700',
+    badgeLabel: 'Đối tác bị khóa',
   },
 }
 const DEFAULT_NOTIF_CFG = {

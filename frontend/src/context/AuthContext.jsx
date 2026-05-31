@@ -63,6 +63,10 @@ export function AuthProvider({ children }) {
       forceLogout()
     })
 
+    es.addEventListener('deleted', () => {
+      forceLogout()
+    })
+
     es.onerror = () => {
       // SSE lỗi/mất kết nối → tự reconnect sau 5s (EventSource tự retry)
       // Không cần làm gì thêm, fallback polling vẫn chạy song song
@@ -82,7 +86,7 @@ export function AuthProvider({ children }) {
 
     fetchUserStatus(parsed.id).then(fresh => {
       if (fresh) {
-        if (fresh.status === 'banned') {
+        if (fresh.status === 'banned' || fresh.status === 'deleted') {
           forceLogout()
         } else {
           const updated = { ...parsed, ...fresh }
@@ -111,7 +115,7 @@ export function AuthProvider({ children }) {
     // 2. Polling fallback — phòng khi SSE không hoạt động (proxy, môi trường giới hạn)
     pollRef.current = setInterval(async () => {
       const fresh = await fetchUserStatus(currentUser.id)
-      if (fresh?.status === 'banned') forceLogout()
+      if (fresh?.status === 'banned' || fresh?.status === 'deleted') forceLogout()
     }, BAN_POLL_INTERVAL)
 
     return () => {
