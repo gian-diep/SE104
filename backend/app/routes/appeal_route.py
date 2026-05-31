@@ -134,17 +134,14 @@ def review_appeal(
             body=f"Tài khoản đã được mở khóa.{' ' + payload.note if payload.note else ''}",
         ))
 
-        # Commit user + notification trước, rồi xóa appeal
-        # để lần ban sau user có thể gửi khiếu nại lại
-        db.commit()
-        db.delete(appeal)
+        # Đánh dấu approved để lưu lịch sử, KHÔNG xóa
+        # Khi admin unban thủ công sau này, admin_route sẽ xóa appeal cũ
+        appeal.status = "approved"
+        appeal.admin_note = payload.note or None
         db.commit()
 
-        user = db.query(User).filter(User.id == appeal.user_id).first() if user else None
-        return {
-            "message": "Đã chấp thuận khiếu nại và mở khóa tài khoản.",
-            "status": "approved",
-        }
+        user = db.query(User).filter(User.id == appeal.user_id).first()
+        return _appeal_out(appeal, user)
 
     elif payload.action == "reject":
         appeal.status = "rejected"
