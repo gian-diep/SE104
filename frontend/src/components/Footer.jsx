@@ -75,7 +75,6 @@ export default function Footer() {
                   { href: '/#search', label: 'Tìm tài liệu' },
                   { href: '/dang-ban', label: 'Đăng bán' },
                   { href: '/tin-nhan', label: 'Tin nhắn' },
-                  { href: '/tai-khoan', label: 'Tài khoản' },
                 ].map(link => (
                   <li key={link.href}>
                     <a href={link.href} className="font-paragraph text-sm text-white/60 hover:text-primary-light transition-colors duration-200 flex items-center gap-2 group">
