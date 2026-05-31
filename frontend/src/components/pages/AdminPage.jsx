@@ -53,6 +53,7 @@ function Badge({ status }) {
     rejected: { label: 'Từ chối',    cls: 'text-red-500 bg-red-50 border-red-200' },
     user:     { label: 'Bình thường', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
     banned:   { label: 'Đã ban',     cls: 'text-red-600 bg-red-50 border-red-200' },
+    deleted:  { label: 'Đã xóa',     cls: 'text-gray-500 bg-gray-100 border-gray-300' },
   }
   const { label, cls } = map[status] ?? { label: status, cls: 'border-teal-100 text-muted-foreground' }
   return (
@@ -849,7 +850,7 @@ function UsersTab() {
                 <p className="font-paragraph text-xs text-muted-foreground">{user.university || '—'}</p>
               </div>
               <div className="col-span-6 md:col-span-2">
-                <Badge status={user.status === 'banned' ? 'banned' : 'user'} />
+                <Badge status={user.status === 'banned' ? 'banned' : user.status === 'deleted' ? 'deleted' : 'user'} />
               </div>
               <div className="col-span-6 md:col-span-1">
                 <p className="font-paragraph text-xs text-muted-foreground">{user.listing_count ?? 0} bài</p>
@@ -859,7 +860,7 @@ function UsersTab() {
                   className="p-2 text-muted-foreground hover:text-primary transition-colors">
                   <UserCircle className="h-4 w-4" />
                 </button>
-                {user.status === 'banned' ? (
+                {user.status !== 'deleted' && (user.status === 'banned' ? (
                   <button onClick={() => unban(user.id, user.username)} disabled={busy[user.id]}
                     title="Unban" className="p-2 text-muted-foreground hover:text-green-500 transition-colors disabled:opacity-50">
                     <CheckCircle className="h-4 w-4" />
@@ -869,13 +870,15 @@ function UsersTab() {
                     title="Ban" className="p-2 text-muted-foreground hover:text-orange-500 transition-colors disabled:opacity-50">
                     <Ban className="h-4 w-4" />
                   </button>
-                )}
+                ))}
+                {user.status !== 'deleted' && (
                 <button
                   onClick={() => setDeleteModal({ open: true, userId: user.id, userName: user.username })}
                   disabled={busy[user.id]} title="Xóa user"
                   className="p-2 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50">
                   <Trash2 className="h-4 w-4" />
                 </button>
+                )}
               </div>
             </div>
           ))
@@ -1059,7 +1062,7 @@ function UsersTab() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-teal-100 bg-surface">
                   <span className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trạng thái</span>
-                  <Badge status={selectedUser.status === 'banned' ? 'banned' : 'user'} />
+                  <Badge status={selectedUser.status === 'banned' ? 'banned' : selectedUser.status === 'deleted' ? 'deleted' : 'user'} />
                 </div>
                 {selectedUser.created_at && (
                   <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-teal-100 bg-surface">
