@@ -464,7 +464,7 @@ export default function HomePage() {
         setIsLoading(true)
 
         const [listingData, userData] = await Promise.all([
-          getListings(),
+          getListings({ limit: 500 }),
           getUsers()
         ])
 
